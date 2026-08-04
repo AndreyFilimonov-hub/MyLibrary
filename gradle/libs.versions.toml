@@ -15,6 +15,7 @@ koin = "4.2.0"
 kotlin = "2.4.10"
 material3 = "1.11.0-alpha07"
 material = "1.13.0"
+navigationCompose = "2.9.2"
 room3 = "3.0.1"
 sqlite = "2.7.0"
 ksp = "2.3.10"
@@ -48,6 +49,8 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 koin-compose = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
+
+navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
