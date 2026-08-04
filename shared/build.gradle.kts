@@ -45,6 +45,8 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
+
+            implementation(libs.koin.android)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -58,9 +60,15 @@ kotlin {
 
             implementation(libs.androidx.room3.runtime)
             implementation(libs.androidx.sqlite.bundled)
+
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+
+            implementation(libs.koin.test)
         }
     }
 }
