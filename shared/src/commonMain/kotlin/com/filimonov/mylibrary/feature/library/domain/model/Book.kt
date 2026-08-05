@@ -6,6 +6,7 @@ data class Book(
     val author: String,
     val path: String,
     val coverPath: String?,
+    val hash: String,
     val isFavorite: Boolean,
     val isRead: Boolean
 )

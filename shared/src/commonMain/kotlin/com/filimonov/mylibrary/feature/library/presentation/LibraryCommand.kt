@@ -4,7 +4,7 @@ import com.filimonov.mylibrary.feature.library.domain.model.Book
 
 sealed interface LibraryCommand {
 
-    data class AddBook(val book: Book): LibraryCommand
+    data class AddBook(val bookPath: String): LibraryCommand
 
     data class DeleteBook(val id: Long): LibraryCommand
 

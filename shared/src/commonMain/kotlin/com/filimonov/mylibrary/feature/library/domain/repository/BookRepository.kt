@@ -7,7 +7,7 @@ interface BookRepository {
 
     fun observeBooks(): Flow<List<Book>>
 
-    suspend fun addBook(book: Book)
+    suspend fun addBook(bookPath: String): Result<Unit>
 
     suspend fun deleteBook(id: Long)
 
