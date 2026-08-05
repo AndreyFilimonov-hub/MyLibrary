@@ -70,6 +70,13 @@ kotlin {
 
             implementation(libs.navigation.compose)
             implementation(libs.kotlinx.serialization.json)
+
+            implementation(libs.filekit.core)
+            implementation(libs.filekit.dialogs)
+            implementation(libs.filekit.dialogs.compose)
+
+            implementation(libs.epub4kmp.core)
+            implementation(libs.okio)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
