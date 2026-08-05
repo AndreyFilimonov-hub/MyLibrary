@@ -11,6 +11,7 @@ fun BookDbModel.toDomain() = Book(
     path = path,
     coverPath = coverPath,
     isFavorite = isFavorite,
+    hash = hash,
     isRead = isRead
 )
 
@@ -21,5 +22,6 @@ fun Book.toDbModel() = BookDbModel(
     path = path,
     coverPath = coverPath,
     isFavorite = isFavorite,
+    hash = hash,
     isRead = isRead
 )
