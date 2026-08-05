@@ -1,5 +1,6 @@
 package com.filimonov.mylibrary.feature.library.presentation
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -42,12 +45,21 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.decodeToImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.feature.library.domain.model.Book
+import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.path
+import okio.FileSystem
+import okio.Path.Companion.toPath
+import okio.SYSTEM
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -56,57 +68,82 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = koinViewModel(),
     onBookClick: (Long) -> Unit
 ) {
-    MaterialTheme {
-        val state = viewModel.state.collectAsStateWithLifecycle()
+    val state = viewModel.state.collectAsStateWithLifecycle()
 
-        Scaffold(
-            modifier = modifier.fillMaxSize(),
-            topBar = {
-                TopAppBar()
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = {
-                        //TODO: launch file picker
+    val picker = rememberFilePickerLauncher(
+        type = FileKitType.File("epub")
+    ) { file ->
+        if (file != null) {
+            viewModel.processCommand(LibraryCommand.AddBook(file.path))
+        }
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar()
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    picker.launch()
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null
+                )
+            }
+        },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState)
+        }
+    ) { innerPadding ->
+        LaunchedEffect(Unit) {
+            viewModel.event.collect { event ->
+                when (event) {
+                    LibraryEvent.Error -> {
+                        snackbarHostState.showSnackbar(
+                            message = "Книга уже добавлена",
+                            actionLabel = "ОК"
+                        )
                     }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null
-                    )
                 }
             }
-        ) { innerPadding ->
-            when (val currentState = state.value) {
-                LibraryState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+        }
+
+        when (val currentState = state.value) {
+            LibraryState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is LibraryState.Success -> {
+                LibraryContent(
+                    modifier = Modifier.fillMaxSize()
+                        .padding(top = innerPadding.calculateTopPadding()),
+                    books = currentState.filteredBooks,
+                    selectedFilter = currentState.filter,
+                    onFilterChipClick = { filter ->
+                        viewModel.processCommand(LibraryCommand.SelectFilter(filter))
+                    },
+                    onBookClick = onBookClick,
+                    onBookDelete = { bookId ->
+                        viewModel.processCommand(LibraryCommand.DeleteBook(bookId))
+                    },
+                    onToggleRead = { book ->
+                        viewModel.processCommand(LibraryCommand.ToggleRead(book))
+                    },
+                    onToggleFavorite = { book ->
+                        viewModel.processCommand(LibraryCommand.ToggleFavorite(book))
                     }
-                }
-                is LibraryState.Success -> {
-                    LibraryContent(
-                        modifier = Modifier.fillMaxSize()
-                            .padding(top = innerPadding.calculateTopPadding()),
-                        books = currentState.filteredBooks,
-                        selectedFilter = currentState.filter,
-                        onFilterChipClick = { filter ->
-                            viewModel.processCommand(LibraryCommand.SelectFilter(filter))
-                        },
-                        onBookClick = onBookClick,
-                        onBookDelete = { bookId ->
-                            viewModel.processCommand(LibraryCommand.DeleteBook(bookId))
-                        },
-                        onToggleRead = { book ->
-                            viewModel.processCommand(LibraryCommand.ToggleRead(book))
-                        },
-                        onToggleFavorite = { book ->
-                            viewModel.processCommand(LibraryCommand.ToggleFavorite(book))
-                        }
-                    )
-                }
+                )
             }
         }
     }
@@ -143,33 +180,68 @@ private fun LibraryContent(
                 )
             }
         }
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .padding(top = 12.dp),
-            contentPadding = PaddingValues(bottom = 108.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(books, key = { it.id }) { book ->
-                SwipeToDeleteBookItem(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp),
-                    book = book,
-                    onClick = {
-                        onBookClick(book.id)
-                    },
-                    onDelete = {
-                        onBookDelete(book.id)
-                    },
-                    onToggleRead = {
-                        onToggleRead(book)
-                    },
-                    onToggleFavorite = {
-                        onToggleFavorite(book)
-                    }
-                )
+        if (books.isEmpty()) {
+            EmptyContent(
+                filter = selectedFilter
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 12.dp),
+                contentPadding = PaddingValues(bottom = 108.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(books, key = { it.id }) { book ->
+                    SwipeToDeleteBookItem(
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp),
+                        book = book,
+                        onClick = {
+                            onBookClick(book.id)
+                        },
+                        onDelete = {
+                            onBookDelete(book.id)
+                        },
+                        onToggleRead = {
+                            onToggleRead(book)
+                        },
+                        onToggleFavorite = {
+                            onToggleFavorite(book)
+                        }
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyContent(
+    modifier: Modifier = Modifier,
+    filter: LibraryFilter
+) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = when (filter) {
+                LibraryFilter.ALL -> {
+                    "Добавьте свою первую книгу"
+                }
+
+                LibraryFilter.FAVORITE -> {
+
+                    "Здесь будут любимые книги"
+                }
+
+                LibraryFilter.READ -> {
+
+                    "Здесь будут прочитанные книги"
+                }
+            }
+        )
     }
 }
 
@@ -234,7 +306,7 @@ private fun SwipeToDeleteBookItem(
             Box(
                 modifier = Modifier.fillMaxSize()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
@@ -271,7 +343,9 @@ private fun BookItem(
             modifier = Modifier.padding(16.dp)
                 .height(IntrinsicSize.Min)
         ) {
-            BookCover()
+            BookCover(
+                coverPath = book.coverPath
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -287,7 +361,8 @@ private fun BookItem(
 
 @Composable
 private fun BookCover(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    coverPath: String?
 ) {
     Surface(
         modifier = modifier.size(
@@ -297,10 +372,25 @@ private fun BookCover(
         shape = RoundedCornerShape(8.dp),
         tonalElevation = 2.dp
     ) {
-        Box(
-            contentAlignment = Alignment.Center
-        ) {
-            Text("\uD83D\uDCD6")
+        if (coverPath != null) {
+            val bytes = FileSystem.SYSTEM.read(coverPath.toPath()) {
+                readByteArray()
+            }
+
+            val imageBitmap = bytes.decodeToImageBitmap()
+
+            Image(
+                modifier = Modifier.fillMaxSize(),
+                bitmap = imageBitmap,
+                contentDescription = null,
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                Text("\uD83D\uDCD6")
+            }
         }
     }
 }
