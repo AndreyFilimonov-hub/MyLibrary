@@ -7,7 +7,9 @@ import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.DeleteBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.GetBooksUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.UpdateBookUseCase
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -23,6 +25,9 @@ class LibraryViewModel(
 
     private val _state = MutableStateFlow<LibraryState>(LibraryState.Loading)
     val state = _state.asStateFlow()
+
+    private val _event = MutableSharedFlow<LibraryEvent>()
+    val event = _event.asSharedFlow()
 
     init {
         getBooksUseCase()
@@ -49,7 +54,12 @@ class LibraryViewModel(
     fun processCommand(command: LibraryCommand) {
         viewModelScope.launch {
             when (command) {
-                is LibraryCommand.AddBook -> addBookUseCase(command.book)
+                is LibraryCommand.AddBook -> {
+                    addBookUseCase(command.bookPath)
+                        .onFailure {
+                            _event.emit(LibraryEvent.Error)
+                        }
+                }
                 is LibraryCommand.DeleteBook -> deleteBookUseCase(command.id)
                 is LibraryCommand.SelectFilter -> _state.update { previousState ->
                     if (previousState is LibraryState.Success) {
