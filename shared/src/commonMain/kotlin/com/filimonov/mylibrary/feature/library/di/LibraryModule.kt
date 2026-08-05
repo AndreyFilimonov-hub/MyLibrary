@@ -1,6 +1,8 @@
 package com.filimonov.mylibrary.feature.library.di
 
+import com.filimonov.mylibrary.feature.library.data.parser.EpubParser
 import com.filimonov.mylibrary.feature.library.data.repository.BookRepositoryImpl
+import com.filimonov.mylibrary.feature.library.data.storage.CoverStorage
 import com.filimonov.mylibrary.feature.library.domain.repository.BookRepository
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.DeleteBookUseCase
@@ -13,7 +15,10 @@ import org.koin.dsl.module
 val libraryModule = module {
 
     single<BookRepository> {
-        BookRepositoryImpl(get())
+        BookRepositoryImpl(
+            bookDao = get(),
+            epubParser = get()
+        )
     }
 
     factory {
@@ -39,5 +44,13 @@ val libraryModule = module {
             get(),
             get()
         )
+    }
+
+    single<CoverStorage> {
+        CoverStorage()
+    }
+
+    single<EpubParser> {
+        EpubParser(get())
     }
 }
