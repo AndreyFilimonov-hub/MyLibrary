@@ -77,6 +77,8 @@ kotlin {
 
             implementation(libs.epub4kmp.core)
             implementation(libs.okio)
+
+            implementation(libs.ksoup)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
