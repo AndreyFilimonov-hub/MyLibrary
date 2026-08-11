@@ -7,7 +7,8 @@ import org.koin.android.ext.koin.androidContext
 fun initKoin(
     context: Context
 ) = initKoin(
-    databaseBuilder = getDatabaseBuilder(context)
+    databaseBuilder = getDatabaseBuilder(context),
+    dataStorePlatformModule = androidDataStoreModule
 ) {
 
     androidContext(context)
