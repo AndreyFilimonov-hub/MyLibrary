@@ -3,20 +3,25 @@ package com.filimonov.mylibrary.feature.reader.presentation.utils
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
+import com.fleeksoft.ksoup.parser.Parser
 
 fun htmlToAnnotatedString(html: String): AnnotatedString {
-    val document = Ksoup.parse(html)
+    val document = Ksoup.parse(html, Parser.xmlParser())
 
     val blockTags = setOf("p", "div", "section", "blockquote", "li")
     val headerTags = setOf("h1", "h2", "h3", "h4", "h5", "h6")
@@ -85,4 +90,50 @@ fun htmlToAnnotatedString(html: String): AnnotatedString {
         if (trimmedText.isEmpty()) return@let AnnotatedString("")
         raw.subSequence(startOffSet, startOffSet + trimmedText.length)
     }
+}
+
+fun paginateChapterGreedy(
+    text: AnnotatedString,
+    textMeasurer: TextMeasurer,
+    style: TextStyle,
+    containerSize: IntSize
+): List<AnnotatedString> {
+    if (text.text.isBlank() || containerSize.width <= 0 || containerSize.height <= 0) return emptyList()
+
+    val pages = mutableListOf<AnnotatedString>()
+    var startIndex = 0
+    val textLength = text.length
+
+    while (startIndex < textLength) {
+        val remaining = text.subSequence(startIndex, textLength)
+
+        val result = textMeasurer.measure(
+            text = remaining,
+            style = style,
+            constraints = Constraints(maxWidth = containerSize.width)
+        )
+
+        var lastFittingLine = -1
+        for (line in 0 until result.lineCount) {
+            val lineBottom = result.multiParagraph.getLineBottom(line)
+            if (lineBottom <= containerSize.height) {
+                lastFittingLine = line
+            } else {
+                break
+            }
+        }
+
+        if (lastFittingLine == -1) lastFittingLine = 0
+
+        val endInRemaining = result.multiParagraph.getLineEnd(lastFittingLine, visibleEnd = true)
+        var safeEnd = (startIndex + endInRemaining).coerceIn(startIndex + 1, textLength)
+
+        while (safeEnd < textLength && text.text[safeEnd].isWhitespace() && text.text[safeEnd] != '\n') {
+            safeEnd++
+        }
+
+        pages.add(text.subSequence(startIndex, safeEnd))
+        startIndex = safeEnd
+    }
+    return pages
 }
