@@ -2,6 +2,7 @@ package com.filimonov.mylibrary.feature.reader.data.parser
 
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.fleeksoft.ksoup.Ksoup
+import com.fleeksoft.ksoup.parser.Parser
 import io.documentnode.epub4kmp.epub.EpubReader
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
@@ -31,7 +32,7 @@ class ContentParser {
                 val resource = reference.resource
                 val html = resource?.data?.decodeToString() ?: continue
 
-                val doc = Ksoup.parse(html)
+                val doc = Ksoup.parse(html, Parser.xmlParser())
                 val bodyText = doc.body().text()
 
                 if (bodyText.isBlank()) continue
