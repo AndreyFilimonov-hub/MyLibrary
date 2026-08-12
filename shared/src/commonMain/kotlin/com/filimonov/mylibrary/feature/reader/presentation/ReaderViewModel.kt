@@ -10,15 +10,15 @@ import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookContentByIdUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
+import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
+import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.presentation.utils.LazyBookPaginator
-import dev.scarlet.logger.Logger
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.consumeAsFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -30,13 +30,14 @@ class ReaderViewModel(
     private val bookId: Long,
     private val getBookUseCase: GetBookContentByIdUseCase,
     private val getReaderSettingsUseCase: GetReaderSettingsUseCase,
-    private val saveSettingsUseCase: SaveSettingsUseCase
+    private val saveSettingsUseCase: SaveSettingsUseCase,
+    private val getReadingProgressUseCase: GetReadingProgressUseCase,
+    private val saveProgressUseCase: SaveProgressUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<ReaderState>(ReaderState.Loading)
     val state = _state.asStateFlow()
 
-    private val progressSaveChannel = Channel<ReadingProgress>(Channel.CONFLATED)
     private var lastProgress: ReadingProgress? = null
 
     private val searchQueryFlow = MutableStateFlow("")
@@ -47,29 +48,27 @@ class ReaderViewModel(
 
     init {
         loadBook()
-        observeProgressSaving()
         observeFontSizeChanges()
 //        observeSearchQuery()
     }
 
     private fun loadBook() {
         viewModelScope.launch {
-            val chapters = getBookUseCase(bookId)
-            val settings = getReaderSettingsUseCase().first()
+            val chaptersDeferred = async { getBookUseCase(bookId) }
+            val settingsDeferred = async { getReaderSettingsUseCase().first() }
+            val progressDeferred = async { getReadingProgressUseCase(bookId) }
+
+            val chapters = chaptersDeferred.await()
+            val settings = settingsDeferred.await()
+            val progress = progressDeferred.await()
+
             _state.update {
                 ReaderState.Success(
                     chapters = chapters,
-                    settings = settings
+                    settings = settings,
+                    restoredProgress = progress
                 )
             }
-        }
-    }
-
-    private fun observeProgressSaving() {
-        viewModelScope.launch {
-            progressSaveChannel.consumeAsFlow()
-                .debounce(800)
-//                .collect { progress -> progressRepository.saveProgress(bookId, progress) }
         }
     }
 
@@ -92,12 +91,14 @@ class ReaderViewModel(
     }
 
     fun onProgressChanged(progress: ReadingProgress) {
-        lastProgress = progress
-        progressSaveChannel.trySend(progress)
-        _state.update { previousState ->
-            if (previousState is ReaderState.Success) {
-                previousState.copy(restoredProgress = progress)
-            } else previousState
+        viewModelScope.launch {
+            _state.update { previousState ->
+                if (previousState is ReaderState.Success) {
+                    lastProgress = progress
+                    saveProgressUseCase(progress)
+                    previousState.copy(restoredProgress = progress)
+                } else previousState
+            }
         }
     }
 
@@ -106,7 +107,7 @@ class ReaderViewModel(
         paginator = null
         lastProgress?.let { progress ->
             viewModelScope.launch(NonCancellable) {
-//                progressRepository.saveProgress(bookId, progress)
+                saveProgressUseCase(progress)
             }
         }
     }
@@ -128,7 +129,6 @@ class ReaderViewModel(
             containerSize = containerSize,
             textMeasurer = textMeasurer
         ).also { newPaginator ->
-            Logger.d("AAA", "new paginator $newPaginator")
             paginator = newPaginator
         }
     }
