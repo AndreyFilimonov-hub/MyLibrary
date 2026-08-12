@@ -7,17 +7,22 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.filimonov.mylibrary.core.database.dao.BookDao
+import com.filimonov.mylibrary.core.database.dao.BookReadingProgressDao
+import com.filimonov.mylibrary.feature.reader.data.mapper.toDbModel
+import com.filimonov.mylibrary.feature.reader.data.mapper.toDomain
 import com.filimonov.mylibrary.feature.reader.data.parser.ContentParser
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
+import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.repository.ReaderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class ReaderRepositoryImpl(
     private val bookDao: BookDao,
+    private val bookReadingProgressDao: BookReadingProgressDao,
     private val dataStore: DataStore<Preferences>,
     private val contentParser: ContentParser
 ) : ReaderRepository {
@@ -56,5 +61,13 @@ class ReaderRepositoryImpl(
             prefs[KEYS.BRIGHTNESS] = settings.brightness
             prefs[KEYS.THEME] = settings.theme.name
         }
+    }
+
+    override suspend fun getReadingProgress(bookId: Long): ReadingProgress? {
+        return bookReadingProgressDao.getReadingProgress(bookId)?.toDomain()
+    }
+
+    override suspend fun saveReadingProgress(progress: ReadingProgress) {
+        bookReadingProgressDao.insert(progress.toDbModel())
     }
 }
