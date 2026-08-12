@@ -113,11 +113,13 @@ fun ReaderScreen(
                                 }
                                 IconButton(onClick = {
                                     showSettings = true
-                                }) { Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Настройки",
-                                    tint = currentState.settings.theme.text
-                                ) }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Настройки",
+                                        tint = currentState.settings.theme.text
+                                    )
+                                }
                             },
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = currentState.settings.theme.background)
                         )
@@ -125,6 +127,7 @@ fun ReaderScreen(
                 ) { innerPadding ->
                     ReaderScreen(
                         modifier = Modifier.padding(innerPadding),
+                        bookId = bookId,
                         chapters = currentState.chapters,
                         settings = currentState.settings,
                         restoredProgress = currentState.restoredProgress,
@@ -179,6 +182,7 @@ fun ReaderScreen(
 @Composable
 fun ReaderScreen(
     modifier: Modifier = Modifier,
+    bookId: Long,
     chapters: List<Chapter>,
     settings: ReaderSettings,
     restoredProgress: ReadingProgress?,
@@ -227,7 +231,9 @@ fun ReaderScreen(
                 getPaginator(chapters, style, containerSize, textMeasurer)
             }
 
-            val outerPagerState = rememberPagerState(initialPage = 0, pageCount = { chapters.size })
+            val outerPagerState = rememberPagerState(
+                initialPage = restoredProgress?.chapterId ?: 0,
+                pageCount = { chapters.size })
 
             LaunchedEffect(outerPagerState.settledPage, paginator) {
                 val chapterIndex = outerPagerState.settledPage
@@ -271,9 +277,17 @@ fun ReaderScreen(
                     style = style,
                     theme = settings.theme,
                     readingMode = settings.readingMode,
-                    restoredCharIndex = if (chapterIndex == 0) 0 else null,
+                    restoredCharIndex = if (chapterIndex == restoredProgress?.chapterId) restoredProgress.charIndex else null,
                     forcedPageIndex = if (chapterIndex == 0) targetPageInChapter else null,
-                    onCharIndexChanged = { /* onProgressChanged(...) */ },
+                    onCharIndexChanged = { charIndex ->
+                        onProgressChanged(
+                            ReadingProgress(
+                                bookId = bookId,
+                                chapterId = chapterIndex,
+                                charIndex = charIndex
+                            )
+                        )
+                    },
                     onCurrentPageInChapterChanged = { pageIndex ->
                         displayedPosition = CurrentPosition(chapterIndex, pageIndex)
                     },
@@ -282,10 +296,12 @@ fun ReaderScreen(
             }
 
             val globalPageIndex =
-                paginator.globalPageIndex(
-                    displayedPosition.chapterIndex,
-                    displayedPosition.pageInChapter
-                )
+                remember(displayedPosition.chapterIndex, displayedPosition.pageInChapter) {
+                    paginator.globalPageIndex(
+                        displayedPosition.chapterIndex,
+                        displayedPosition.pageInChapter
+                    )
+                }
 
             val totalPages = paginator.totalPages()
 
@@ -310,7 +326,7 @@ fun BookPager(
     beyondViewportPageCount: Int = 0,
     pageContent: @Composable (Int) -> Unit
 ) {
-    when(readingMode) {
+    when (readingMode) {
         ReadingMode.HORIZONTAL -> {
             HorizontalPager(
                 state,
@@ -318,6 +334,7 @@ fun BookPager(
                 beyondViewportPageCount = beyondViewportPageCount
             ) { pageContent(it) }
         }
+
         ReadingMode.VERTICAL -> {
             VerticalPager(
                 state,
@@ -380,7 +397,7 @@ private fun ChapterPageContent(
         state = innerPagerState,
         modifier = Modifier.fillMaxSize(),
         readingMode = readingMode
-        ) { pageIndex ->
+    ) { pageIndex ->
         Text(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
             text = pages[pageIndex],
