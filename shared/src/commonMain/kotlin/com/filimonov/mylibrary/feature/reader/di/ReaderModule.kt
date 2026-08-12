@@ -6,6 +6,8 @@ import com.filimonov.mylibrary.feature.reader.data.repository.ReaderRepositoryIm
 import com.filimonov.mylibrary.feature.reader.domain.repository.ReaderRepository
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookContentByIdUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
+import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
+import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveSettingsUseCase
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -15,6 +17,7 @@ val readerModule = module {
     single<ReaderRepository> {
         ReaderRepositoryImpl(
             bookDao = get(),
+            bookReadingProgressDao = get(),
             dataStore = get(),
             contentParser = get()
         )
@@ -32,12 +35,22 @@ val readerModule = module {
         SaveSettingsUseCase(get())
     }
 
+    factory<GetReadingProgressUseCase> {
+        GetReadingProgressUseCase(get())
+    }
+
+    factory<SaveProgressUseCase> {
+        SaveProgressUseCase(get())
+    }
+
     viewModel { (bookId: Long) ->
         ReaderViewModel(
             bookId = bookId,
             getBookUseCase = get(),
             getReaderSettingsUseCase = get(),
             saveSettingsUseCase = get(),
+            getReadingProgressUseCase = get(),
+            saveProgressUseCase = get()
         )
     }
 
