@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.feature.reader.presentation
+package com.filimonov.mylibrary.feature.reader.presentation.reader
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,21 +13,29 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.BrightnessHigh
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,11 +44,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -48,6 +62,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,11 +71,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
@@ -68,9 +85,12 @@ import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
-import com.filimonov.mylibrary.feature.reader.presentation.utils.CurrentPosition
-import com.filimonov.mylibrary.feature.reader.presentation.utils.LazyBookPaginator
+import com.filimonov.mylibrary.feature.reader.presentation.reader.CurrentPosition
+import com.filimonov.mylibrary.feature.reader.presentation.reader.LazyBookPaginator
+import com.filimonov.mylibrary.feature.reader.presentation.search.NavigationTarget
+import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -96,6 +116,9 @@ fun ReaderScreen(
             var showSearch by remember { mutableStateOf(false) }
             var showSettings by remember { mutableStateOf(false) }
 
+            val snackbarHostState = remember { SnackbarHostState() }
+            val scope = rememberCoroutineScope()
+
             Box(modifier = modifier.fillMaxSize()) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -104,7 +127,18 @@ fun ReaderScreen(
                         TopAppBar(
                             title = { Text("") },
                             actions = {
-                                IconButton(onClick = { showSearch = true }) {
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        if (currentState.isSearchAvailable) {
+                                            showSearch = true
+                                        } else {
+                                            snackbarHostState.showSnackbar(
+                                                "Дождитесь полной загрузки книги",
+                                                "OK"
+                                            )
+                                        }
+                                    }
+                                }) {
                                     Icon(
                                         imageVector = Icons.Default.Search,
                                         contentDescription = "Поиск",
@@ -123,38 +157,48 @@ fun ReaderScreen(
                             },
                             colors = TopAppBarDefaults.topAppBarColors(containerColor = currentState.settings.theme.background)
                         )
-                    }
+                    },
+                    snackbarHost = { SnackbarHost(snackbarHostState) }
                 ) { innerPadding ->
-                    ReaderScreen(
+                    BookScreen(
                         modifier = Modifier.padding(innerPadding),
                         bookId = bookId,
                         chapters = currentState.chapters,
                         settings = currentState.settings,
                         restoredProgress = currentState.restoredProgress,
-                        pendingNavigation = null,
+                        pendingNavigation = currentState.pendingNavigation,
+                        onPaginationFinished = viewModel::onPaginationFinished,
                         onProgressChanged = viewModel::onProgressChanged,
-                        onNavigationHandled = {},
+                        onNavigationHandled = viewModel::onNavigationHandled,
                         getPaginator = viewModel::getOrCreatePaginator
                     )
 
-//                if (showSearch) {
-//                    Dialog(onDismissRequest = { showSearch = false; viewModel.clearSearch() }) {
-//                        Surface {
-//                            SearchScreen(
-//                                query = state.searchQuery,
-//                                results = state.searchResults,
-//                                isSearching = state.isSearching,
-//                                chapters = state.chapters,
-//                                onQueryChange = viewModel::onSearchQueryChanged,
-//                                onResultClick = { result ->
-//                                    viewModel.onSearchResultSelected(result)
-//                                    showSearch = false
-//                                }
-//                            )
-//                        }
-//                    }
-//                }
-//
+                    if (showSearch) {
+                        Dialog(onDismissRequest = {
+                            showSearch = false; viewModel.clearSearch()
+                        }) {
+                            Surface(
+                                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                            ) {
+                                SearchScreen(
+                                    query = currentState.searchQuery,
+                                    results = currentState.searchResults,
+                                    isSearching = currentState.isSearching,
+                                    totalPages = currentState.totalPages,
+                                    onQueryChange = viewModel::onSearchQueryChanged,
+                                    onResultClick = { searchResult ->
+                                        viewModel.onSearchResultSelected(searchResult)
+                                        showSearch = false
+                                    },
+                                    onJumpToPage = { page ->
+                                        viewModel.jumpToPageNumber(page)
+                                        showSearch = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                     if (showSettings) {
                         ModalBottomSheet(onDismissRequest = { showSettings = false }) {
                             ReaderSettingsPanel(
@@ -180,13 +224,14 @@ fun ReaderScreen(
 }
 
 @Composable
-fun ReaderScreen(
+fun BookScreen(
     modifier: Modifier = Modifier,
     bookId: Long,
     chapters: List<Chapter>,
     settings: ReaderSettings,
     restoredProgress: ReadingProgress?,
-    pendingNavigation: String?,
+    pendingNavigation: NavigationTarget?,
+    onPaginationFinished: (Int?) -> Unit,
     onProgressChanged: (ReadingProgress) -> Unit,
     onNavigationHandled: () -> Unit,
     getPaginator: (List<Chapter>, TextStyle, IntSize, TextMeasurer) -> LazyBookPaginator
@@ -243,31 +288,31 @@ fun ReaderScreen(
                 paginator.ensurePaginated(chapterIndex + 2)
             }
 
-            LaunchedEffect(style) {
+            LaunchedEffect(paginator) {
                 paginator.countAllPagesInBackground()
+                paginator.isFullyCounted.collect { isFullyCounted ->
+                    if (isFullyCounted) {
+                        onPaginationFinished(paginator.totalPages())
+                    }
+                }
             }
 
-            var targetPageInChapter by remember { mutableStateOf<Int?>(null) }
+            var pendingTarget by remember { mutableStateOf<NavigationTarget?>(null) }
             LaunchedEffect(pendingNavigation, paginator) {
                 val nav = pendingNavigation ?: return@LaunchedEffect
-                val pages = paginator.ensurePaginatedAwait(0)
-                var acc = 0
-                var page = 0
-                for ((i, p) in pages.withIndex()) {
-                    if (0 < acc + p.length) {
-                        page = i; break
-                    }
-                    acc += p.length
-                }
-                outerPagerState.scrollToPage(0)
-                targetPageInChapter = page
+                outerPagerState.scrollToPage(nav.chapterIndex)
+                pendingTarget = nav
                 onNavigationHandled()
             }
 
+            val currentChapterPages = paginator.pagesFor(outerPagerState.settledPage)
+            val isCurrentChapterLoading = currentChapterPages == null
+
             BookPager(
+                modifier = Modifier.fillMaxSize(),
                 state = outerPagerState,
                 beyondViewportPageCount = 1,
-                modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = !isCurrentChapterLoading,
                 readingMode = settings.readingMode
             ) { chapterIndex ->
                 ChapterPageContent(
@@ -278,7 +323,8 @@ fun ReaderScreen(
                     theme = settings.theme,
                     readingMode = settings.readingMode,
                     restoredCharIndex = if (chapterIndex == restoredProgress?.chapterId) restoredProgress.charIndex else null,
-                    forcedPageIndex = if (chapterIndex == 0) targetPageInChapter else null,
+                    openAtLastPage = chapterIndex < outerPagerState.settledPage,
+                    forcedPageIndex = if (chapterIndex == pendingTarget?.chapterIndex) pendingTarget?.pageIndexInChapter else null,
                     onCharIndexChanged = { charIndex ->
                         onProgressChanged(
                             ReadingProgress(
@@ -295,18 +341,15 @@ fun ReaderScreen(
                 )
             }
 
-            val globalPageIndex =
-                remember(displayedPosition.chapterIndex, displayedPosition.pageInChapter) {
-                    paginator.globalPageIndex(
-                        displayedPosition.chapterIndex,
-                        displayedPosition.pageInChapter
-                    )
-                }
+            val globalPageIndex = paginator.globalPageIndex(
+                displayedPosition.chapterIndex,
+                displayedPosition.pageInChapter
+            )
 
             val totalPages = paginator.totalPages()
 
             LaunchedEffect(globalPageIndex, totalPages) {
-                pageInfo = "стр ${globalPageIndex + 1} / ${totalPages ?: "..."}"
+                pageInfo = "стр ${globalPageIndex?.plus(1) ?: "..."} / ${totalPages ?: "..."}"
             }
         }
 
@@ -324,6 +367,7 @@ fun BookPager(
     modifier: Modifier = Modifier,
     readingMode: ReadingMode,
     beyondViewportPageCount: Int = 0,
+    userScrollEnabled: Boolean = true,
     pageContent: @Composable (Int) -> Unit
 ) {
     when (readingMode) {
@@ -331,7 +375,8 @@ fun BookPager(
             HorizontalPager(
                 state,
                 modifier,
-                beyondViewportPageCount = beyondViewportPageCount
+                beyondViewportPageCount = beyondViewportPageCount,
+                userScrollEnabled = userScrollEnabled
             ) { pageContent(it) }
         }
 
@@ -339,7 +384,8 @@ fun BookPager(
             VerticalPager(
                 state,
                 modifier,
-                beyondViewportPageCount = beyondViewportPageCount
+                beyondViewportPageCount = beyondViewportPageCount,
+                userScrollEnabled = userScrollEnabled
             ) { pageContent(it) }
         }
     }
@@ -347,6 +393,7 @@ fun BookPager(
 
 @Composable
 private fun ChapterPageContent(
+    modifier: Modifier = Modifier,
     chapterIndex: Int,
     isActiveChapter: Boolean,
     paginator: LazyBookPaginator,
@@ -354,6 +401,7 @@ private fun ChapterPageContent(
     theme: ReaderTheme,
     readingMode: ReadingMode,
     restoredCharIndex: Int?,
+    openAtLastPage: Boolean,
     forcedPageIndex: Int?,
     onCharIndexChanged: (Int) -> Unit,
     onCurrentPageInChapterChanged: (pageIndex: Int) -> Unit,
@@ -369,19 +417,23 @@ private fun ChapterPageContent(
     if (pages.isEmpty()) return
 
     val pageStartOffsets = remember(pages) {
-        val offsets = IntArray(pages.size);
+        val offsets = IntArray(pages.size)
         var acc = 0
         pages.forEachIndexed { i, p -> offsets[i] = acc; acc += p.length }
         offsets
     }
     val initialPage = remember(pages, restoredCharIndex) {
-        if (restoredCharIndex == null) 0
-        else pageStartOffsets.indexOfLast { it <= restoredCharIndex }.coerceAtLeast(0)
+        when {
+            restoredCharIndex != null -> pageStartOffsets.indexOfLast { it <= restoredCharIndex }
+                .coerceAtLeast(0)
+
+            openAtLastPage -> pages.lastIndex
+            else -> 0
+        }
     }
 
     val innerPagerState = rememberPagerState(initialPage = initialPage, pageCount = { pages.size })
 
-    // Программный переход при поиске
     LaunchedEffect(forcedPageIndex) {
         forcedPageIndex?.let { innerPagerState.scrollToPage(it.coerceIn(0, pages.lastIndex)) }
     }
@@ -394,8 +446,8 @@ private fun ChapterPageContent(
     }
 
     BookPager(
+        modifier = modifier.fillMaxSize(),
         state = innerPagerState,
-        modifier = Modifier.fillMaxSize(),
         readingMode = readingMode
     ) { pageIndex ->
         Text(
@@ -409,13 +461,14 @@ private fun ChapterPageContent(
 
 @Composable
 fun ReaderSettingsPanel(
+    modifier: Modifier = Modifier,
     settings: ReaderSettings,
     onSettingsChange: (ReaderSettings) -> Unit,
     onIncreaseFontSize: () -> Unit,
     onDecreaseFontSize: () -> Unit
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
@@ -506,12 +559,13 @@ fun ReaderSettingsPanel(
 
 @Composable
 private fun ThemeSwatch(
+    modifier: Modifier = Modifier,
     theme: ReaderTheme,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(44.dp)
             .clip(CircleShape)
             .background(theme.background)
@@ -524,5 +578,158 @@ private fun ThemeSwatch(
         contentAlignment = Alignment.Center
     ) {
         Text("Aa", color = theme.text, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+fun SearchScreen(
+    modifier: Modifier = Modifier,
+    query: String,
+    results: List<SearchResult>,
+    isSearching: Boolean,
+    totalPages: Int?,
+    onQueryChange: (String) -> Unit,
+    onResultClick: (SearchResult) -> Unit,
+    onJumpToPage: (Int) -> Unit
+) {
+    var selectedTab by remember { mutableStateOf(0) }
+    var pageInput by remember { mutableStateOf("") }
+
+    val tabs = listOf("Поиск", "Переход на страницу")
+
+    Column(
+        modifier = modifier.fillMaxWidth()
+            .heightIn(max = 500.dp)
+    ) {
+        SecondaryTabRow(
+            selectedTabIndex = selectedTab
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = { Text(title) }
+                )
+            }
+        }
+
+        when (selectedTab) {
+            0 -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        placeholder = {
+                            Text("Поиск по книге…")
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        singleLine = true,
+                        trailingIcon = {
+                            if (isSearching) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else if (query.isNotEmpty()) {
+                                IconButton(
+                                    onClick = {
+                                        onQueryChange("")
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Очистить поиск"
+                                    )
+                                }
+                            }
+                        }
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                    ) {
+                        items(results) { result ->
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onResultClick(result)
+                                    }
+                                    .padding(12.dp)
+                            ) {
+                                Text(
+                                    text = "стр. ${result.globalPageIndex + 1}",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                                Spacer(
+                                    modifier = Modifier.height(4.dp)
+                                )
+                                Text(
+                                    text = result.snippet,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+
+            1 -> {
+                var pageError by remember { mutableStateOf(false) }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Переход на страницу",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    TextField(
+                        value = pageInput,
+                        onValueChange = {
+                            pageInput = it.filter(Char::isDigit)
+                            pageError = false
+                        },
+                        placeholder = {
+                            Text("Стр. 1..${totalPages ?: "?"}")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number
+                        ),
+                        isError = pageError,
+                        supportingText = {
+                            if (pageError) {
+                                Text("Введите страницу от 1 до $totalPages")
+                            }
+                        }
+                    )
+                    Button(
+                        onClick = {
+                            val page = pageInput.toIntOrNull()
+
+                            if (page != null && totalPages != null && page > 0 && page <= totalPages) {
+                                onJumpToPage(page - 1)
+                            } else {
+                                pageError = true
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Перейти")
+                    }
+                }
+            }
+        }
     }
 }
