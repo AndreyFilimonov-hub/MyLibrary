@@ -33,6 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
+import mylibrary.shared.generated.resources.Res
+import mylibrary.shared.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SearchScreen(
@@ -48,22 +51,31 @@ fun SearchScreen(
     var selectedTab by remember { mutableStateOf(0) }
     var pageInput by remember { mutableStateOf("") }
 
-    val tabs = listOf("Поиск", "Переход на страницу")
+    var pageError by remember { mutableStateOf(false) }
 
     Column(
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
             .heightIn(max = 500.dp)
     ) {
         SecondaryTabRow(
             selectedTabIndex = selectedTab
         ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title) }
-                )
-            }
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = {
+                    Text(stringResource(Res.string.search_tab))
+                }
+            )
+
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = {
+                    Text(stringResource(Res.string.go_to_page_tab))
+                }
+            )
         }
 
         when (selectedTab) {
@@ -78,7 +90,9 @@ fun SearchScreen(
                         value = query,
                         onValueChange = onQueryChange,
                         placeholder = {
-                            Text("Поиск по книге…")
+                            Text(
+                                stringResource(Res.string.search_book)
+                            )
                         },
                         singleLine = true,
                         trailingIcon = {
@@ -94,7 +108,9 @@ fun SearchScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
-                                        contentDescription = "Очистить поиск"
+                                        contentDescription = stringResource(
+                                            Res.string.clear_search
+                                        )
                                     )
                                 }
                             }
@@ -117,11 +133,14 @@ fun SearchScreen(
                                     .padding(AppDimension.md)
                             ) {
                                 Text(
-                                    text = "стр. ${result.globalPageIndex + 1}",
+                                    text = stringResource(
+                                        Res.string.page_number,
+                                        result.globalPageIndex + 1
+                                    ),
                                     style = MaterialTheme.typography.labelMedium
                                 )
                                 Spacer(
-                                    modifier = Modifier.height(4.dp)
+                                    modifier = Modifier.height(AppDimension.xs)
                                 )
                                 Text(
                                     text = result.snippet,
@@ -135,7 +154,6 @@ fun SearchScreen(
             }
 
             1 -> {
-                var pageError by remember { mutableStateOf(false) }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -143,7 +161,7 @@ fun SearchScreen(
                     verticalArrangement = Arrangement.spacedBy(AppDimension.md)
                 ) {
                     Text(
-                        text = "Переход на страницу",
+                        text = stringResource(Res.string.go_to_page),
                         style = MaterialTheme.typography.titleMedium
                     )
                     TextField(
@@ -154,7 +172,12 @@ fun SearchScreen(
                             pageError = false
                         },
                         placeholder = {
-                            Text("Стр. 1..${totalPages ?: "?"}")
+                            Text(
+                                stringResource(
+                                    Res.string.page_placeholder,
+                                    totalPages?.toString() ?: "?"
+                                )
+                            )
                         },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
@@ -163,7 +186,12 @@ fun SearchScreen(
                         isError = pageError,
                         supportingText = {
                             if (pageError) {
-                                Text("Введите страницу от 1 до $totalPages")
+                                Text(
+                                    stringResource(
+                                        Res.string.page_range_error,
+                                        totalPages ?: "?"
+                                    )
+                                )
                             }
                         }
                     )
@@ -172,14 +200,20 @@ fun SearchScreen(
                         onClick = {
                             val page = pageInput.toIntOrNull()
 
-                            if (page != null && totalPages != null && page > 0 && page <= totalPages) {
+                            if (
+                                page != null &&
+                                totalPages != null &&
+                                page in 1..totalPages
+                            ) {
                                 onJumpToPage(page - 1)
                             } else {
                                 pageError = true
                             }
                         }
                     ) {
-                        Text("Перейти")
+                        Text(
+                            stringResource(Res.string.go)
+                        )
                     }
                 }
             }
