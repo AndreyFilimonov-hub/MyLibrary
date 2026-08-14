@@ -1,6 +1,5 @@
 package com.filimonov.mylibrary.feature.reader.di
 
-import com.filimonov.mylibrary.feature.reader.presentation.ReaderViewModel
 import com.filimonov.mylibrary.feature.reader.data.parser.ContentParser
 import com.filimonov.mylibrary.feature.reader.data.repository.ReaderRepositoryImpl
 import com.filimonov.mylibrary.feature.reader.domain.repository.ReaderRepository
@@ -9,6 +8,7 @@ import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUs
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveSettingsUseCase
+import com.filimonov.mylibrary.feature.reader.presentation.reader.ReaderViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
