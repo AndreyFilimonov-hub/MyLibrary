@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.feature.library.data.storage
+package com.filimonov.mylibrary.core.storage
 
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
