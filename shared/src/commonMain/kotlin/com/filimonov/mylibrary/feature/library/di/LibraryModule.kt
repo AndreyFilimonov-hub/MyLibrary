@@ -2,7 +2,6 @@ package com.filimonov.mylibrary.feature.library.di
 
 import com.filimonov.mylibrary.feature.library.data.parser.EpubParser
 import com.filimonov.mylibrary.feature.library.data.repository.BookRepositoryImpl
-import com.filimonov.mylibrary.feature.library.data.storage.CoverStorage
 import com.filimonov.mylibrary.feature.library.domain.repository.BookRepository
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.DeleteBookUseCase
@@ -46,11 +45,10 @@ val libraryModule = module {
         )
     }
 
-    single<CoverStorage> {
-        CoverStorage()
-    }
-
     single<EpubParser> {
-        EpubParser(get())
+        EpubParser(
+            coverStorage = get(),
+            bookStorage = get()
+        )
     }
 }

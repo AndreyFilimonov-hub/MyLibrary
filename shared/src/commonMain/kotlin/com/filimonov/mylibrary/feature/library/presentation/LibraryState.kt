@@ -12,4 +12,3 @@ sealed interface LibraryState {
         val filter: LibraryFilter
     ) : LibraryState
 }
-
