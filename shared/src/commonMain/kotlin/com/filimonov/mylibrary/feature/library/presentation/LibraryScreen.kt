@@ -58,9 +58,20 @@ import com.filimonov.mylibrary.feature.library.domain.model.Book
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
+import mylibrary.shared.generated.resources.Res
+import mylibrary.shared.generated.resources.add_first_book
+import mylibrary.shared.generated.resources.book_already_added
+import mylibrary.shared.generated.resources.favorite_books_empty
+import mylibrary.shared.generated.resources.filter_all
+import mylibrary.shared.generated.resources.filter_favorite
+import mylibrary.shared.generated.resources.filter_read
+import mylibrary.shared.generated.resources.library_title
+import mylibrary.shared.generated.resources.ok
+import mylibrary.shared.generated.resources.read_books_empty
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -102,13 +113,15 @@ fun LibraryScreen(
             SnackbarHost(snackbarHostState)
         }
     ) { innerPadding ->
+        val bookAlreadyAdded = stringResource(Res.string.book_already_added)
+        val ok = stringResource(Res.string.ok)
         LaunchedEffect(Unit) {
             viewModel.event.collect { event ->
                 when (event) {
                     LibraryEvent.Error -> {
                         snackbarHostState.showSnackbar(
-                            message = "Книга уже добавлена",
-                            actionLabel = "ОК"
+                            message = bookAlreadyAdded,
+                            actionLabel = ok
                         )
                     }
                 }
@@ -224,17 +237,15 @@ private fun EmptyContent(
         Text(
             text = when (filter) {
                 LibraryFilter.ALL -> {
-                    "Добавьте свою первую книгу"
+                    stringResource(Res.string.add_first_book)
                 }
 
                 LibraryFilter.FAVORITE -> {
-
-                    "Здесь будут любимые книги"
+                    stringResource(Res.string.favorite_books_empty)
                 }
 
                 LibraryFilter.READ -> {
-
-                    "Здесь будут прочитанные книги"
+                    stringResource(Res.string.read_books_empty)
                 }
             }
         )
@@ -256,9 +267,9 @@ fun LibraryFilterChip(
         label = {
             Text(
                 text = when (filter) {
-                    LibraryFilter.ALL -> "Все"
-                    LibraryFilter.FAVORITE -> "Любимые"
-                    LibraryFilter.READ -> "Прочитанные"
+                    LibraryFilter.ALL -> stringResource(Res.string.filter_all)
+                    LibraryFilter.FAVORITE -> stringResource(Res.string.filter_favorite)
+                    LibraryFilter.READ -> stringResource(Res.string.filter_read)
                 }
             )
         }
@@ -272,7 +283,7 @@ private fun TopAppBar(
     TopAppBar(
         modifier = modifier,
         title = {
-            Text("My Library")
+            Text(stringResource(Res.string.library_title))
         }
     )
 }
