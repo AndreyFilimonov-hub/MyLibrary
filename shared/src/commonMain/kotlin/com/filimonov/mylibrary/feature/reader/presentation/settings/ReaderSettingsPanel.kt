@@ -44,8 +44,7 @@ fun ReaderSettingsPanel(
     modifier: Modifier = Modifier,
     settings: ReaderSettings,
     onSettingsChange: (ReaderSettings) -> Unit,
-    onIncreaseFontSize: () -> Unit,
-    onDecreaseFontSize: () -> Unit
+    onChangeFontSize: (Int) -> Unit
 ) {
     Column(
         modifier = modifier
@@ -58,7 +57,11 @@ fun ReaderSettingsPanel(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedIconButton(onClick = onDecreaseFontSize) {
+            OutlinedIconButton(
+                onClick = {
+                    onChangeFontSize(settings.fontSize - 2)
+                }
+            ) {
                 Icon(Icons.Default.Remove, contentDescription = "Уменьшить шрифт")
             }
             Text(
@@ -67,7 +70,11 @@ fun ReaderSettingsPanel(
                 modifier = Modifier.widthIn(min = 48.dp),
                 textAlign = TextAlign.Center
             )
-            OutlinedIconButton(onClick = onIncreaseFontSize) {
+            OutlinedIconButton(
+                onClick = {
+                    onChangeFontSize(settings.fontSize + 2)
+                }
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Увеличить шрифт")
             }
         }
