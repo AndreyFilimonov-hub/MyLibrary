@@ -77,6 +77,11 @@ kotlin {
 
             implementation(libs.epub4kmp.core)
             implementation(libs.okio)
+
+            implementation(libs.ksoup)
+
+            implementation(libs.androidx.datastore)
+            implementation(libs.androidx.datastore.preferences)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
