@@ -35,9 +35,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
+import mylibrary.shared.generated.resources.Res
+import mylibrary.shared.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ReaderSettingsPanel(
@@ -49,25 +53,28 @@ fun ReaderSettingsPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = AppDimension.xl, vertical = AppDimension.md)
     ) {
-        Text("Размер шрифта", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
+        Text(stringResource(Res.string.font_size), style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(AppDimension.sm))
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(AppDimension.lg)
         ) {
             OutlinedIconButton(
                 onClick = {
                     onChangeFontSize(settings.fontSize - 2)
                 }
             ) {
-                Icon(Icons.Default.Remove, contentDescription = "Уменьшить шрифт")
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = stringResource(Res.string.decrease_font_size)
+                )
             }
             Text(
+                modifier = Modifier.widthIn(min = 48.dp),
                 text = "${settings.fontSize}",
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.widthIn(min = 48.dp),
                 textAlign = TextAlign.Center
             )
             OutlinedIconButton(
@@ -75,15 +82,18 @@ fun ReaderSettingsPanel(
                     onChangeFontSize(settings.fontSize + 2)
                 }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Увеличить шрифт")
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(Res.string.increase_font_size)
+                )
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppDimension.xxl))
         HorizontalDivider()
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppDimension.xxl))
 
-        Text("Режим чтения", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(Res.string.reading_mode), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(8.dp))
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             ReadingMode.entries.forEachIndexed { index, mode ->
@@ -93,44 +103,47 @@ fun ReaderSettingsPanel(
                     shape = SegmentedButtonDefaults.itemShape(index, ReadingMode.entries.size)
                 ) {
                     Text(
-                        if (mode == ReadingMode.HORIZONTAL) "Горизонтально" else "Вертикально"
+                        text = when (mode) {
+                            ReadingMode.HORIZONTAL -> stringResource(Res.string.reading_mode_horizontal)
+                            ReadingMode.VERTICAL -> stringResource(Res.string.reading_mode_vertical)
+                        }
                     )
                 }
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppDimension.xxl))
         HorizontalDivider()
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppDimension.xxl))
 
-        Text("Яркость", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
+        Text(stringResource(Res.string.brightness), style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(AppDimension.sm))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Default.Brightness6,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(AppDimension.xl),
+                imageVector = Icons.Default.Brightness6,
+                contentDescription = null
             )
             Slider(
+                modifier = Modifier.weight(1f).padding(horizontal = AppDimension.sm),
                 value = settings.brightness,
                 onValueChange = { onSettingsChange(settings.copy(brightness = it)) },
-                valueRange = 0.1f..1f,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                valueRange = 0.1f..1f
             )
             Icon(
-                Icons.Default.BrightnessHigh,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(AppDimension.xl),
+                imageVector = Icons.Default.BrightnessHigh,
+                contentDescription = null
             )
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppDimension.xxl))
         HorizontalDivider()
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(AppDimension.xxl))
 
-        Text("Тема оформления", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(stringResource(Res.string.theme), style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(AppDimension.md))
+        Row(horizontalArrangement = Arrangement.spacedBy(AppDimension.lg)) {
             ReaderTheme.entries.forEach { theme ->
                 ThemeSwatch(
                     theme = theme,
@@ -140,7 +153,7 @@ fun ReaderSettingsPanel(
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(AppDimension.lg))
     }
 }
 
