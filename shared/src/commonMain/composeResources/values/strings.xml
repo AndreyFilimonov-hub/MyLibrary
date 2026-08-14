@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    ```
+    <!-- Common -->
+
+    <string name="ok">ОК</string>
+
+    <!-- Library -->
+
+    <string name="library_title">My Library</string>
+
+    <string name="book_already_added">Книга уже добавлена</string>
+    <string name="invalid_epub_exception">Ошибка чтения, попробуйте другой файл</string>
+    <string name="unknown_error">Неизвестная ошибка</string>
+
+    <string name="add_first_book">Добавьте свою первую книгу</string>
+    <string name="favorite_books_empty">Здесь будут любимые книги</string>
+    <string name="read_books_empty">Здесь будут прочитанные книги</string>
+
+    <string name="filter_all">Все</string>
+    <string name="filter_favorite">Любимые</string>
+    <string name="filter_read">Прочитанные</string>
+
+    <!-- Reader -->
+
+    <string name="search">Поиск</string>
+    <string name="settings">Настройки</string>
+
+    <string name="wait_for_book_loading">Дождитесь полной загрузки книги</string>
+
+    <string name="page_info">стр. %1$s / %2$s</string>
+    <string name="page_info_template">стр. ... / ...</string>
+    <string name="page_number">стр. %1$d</string>
+
+    <!-- Search -->
+
+    <string name="search_tab">Поиск</string>
+    <string name="go_to_page_tab">Переход на страницу</string>
+
+    <string name="search_book">Поиск по книге…</string>
+    <string name="clear_search">Очистить поиск</string>
+
+    <string name="go_to_page">Переход на страницу</string>
+    <string name="page_placeholder">Стр. 1..%1$s</string>
+    <string name="page_range_error">Введите страницу от 1 до %1$s</string>
+    <string name="go">Перейти</string>
+
+    <!-- Reader settings -->
+
+    <string name="font_size">Размер шрифта</string>
+    <string name="decrease_font_size">Уменьшить шрифт</string>
+    <string name="increase_font_size">Увеличить шрифт</string>
+
+    <string name="reading_mode">Режим чтения</string>
+    <string name="reading_mode_horizontal">Горизонтально</string>
+    <string name="reading_mode_vertical">Вертикально</string>
+
+    <string name="brightness">Яркость</string>
+    <string name="theme">Тема оформления</string>
+
+</resources>
