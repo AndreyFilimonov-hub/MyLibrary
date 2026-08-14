@@ -2,6 +2,8 @@ package com.filimonov.mylibrary.feature.library.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.filimonov.mylibrary.core.result.onFailure
+import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.DeleteBookUseCase
@@ -56,10 +58,29 @@ class LibraryViewModel(
             when (command) {
                 is LibraryCommand.AddBook -> {
                     addBookUseCase(command.bookPath)
-                        .onFailure {
-                            _event.emit(LibraryEvent.Error)
+                        .onFailure { libraryError ->
+                            when (libraryError) {
+                                LibraryError.BookAlreadyExists -> _event.emit(
+                                    LibraryEvent.Error(
+                                        LibraryError.BookAlreadyExists
+                                    )
+                                )
+
+                                LibraryError.InvalidEpubException -> _event.emit(
+                                    LibraryEvent.Error(
+                                        LibraryError.InvalidEpubException
+                                    )
+                                )
+
+                                LibraryError.UnknownError -> _event.emit(
+                                    LibraryEvent.Error(
+                                        LibraryError.UnknownError
+                                    )
+                                )
+                            }
                         }
                 }
+
                 is LibraryCommand.DeleteBook -> deleteBookUseCase(command.id)
                 is LibraryCommand.SelectFilter -> _state.update { previousState ->
                     if (previousState is LibraryState.Success) {
