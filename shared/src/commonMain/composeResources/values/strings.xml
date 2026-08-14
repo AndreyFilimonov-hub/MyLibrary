@@ -12,6 +12,8 @@
     <string name="library_title">My Library</string>
 
     <string name="book_already_added">Книга уже добавлена</string>
+    <string name="invalid_epub_exception">Ошибка чтения, попробуйте другой файл</string>
+    <string name="unknown_error">Неизвестная ошибка</string>
 
     <string name="add_first_book">Добавьте свою первую книгу</string>
     <string name="favorite_books_empty">Здесь будут любимые книги</string>
