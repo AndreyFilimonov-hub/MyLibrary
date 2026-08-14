@@ -133,15 +133,22 @@ fun ReaderScreen(
                         settings = currentState.settings,
                         restoredProgress = currentState.restoredProgress,
                         pendingNavigation = currentState.pendingNavigation,
-                        onPaginationFinished = viewModel::onPaginationFinished,
-                        onProgressChanged = viewModel::onProgressChanged,
-                        onNavigationHandled = viewModel::onNavigationHandled,
+                        onPaginationFinished = { totalPages ->
+                            viewModel.processCommand(ReaderCommand.OnPaginationFinished(totalPages))
+                        },
+                        onProgressChanged = { progress ->
+                            viewModel.processCommand(ReaderCommand.SaveProgress(progress))
+                        },
+                        onNavigationHandled = {
+                            viewModel.processCommand(ReaderCommand.OnNavigationHandled)
+                        },
                         getPaginator = viewModel::getOrCreatePaginator
                     )
 
                     if (showSearch) {
                         Dialog(onDismissRequest = {
-                            showSearch = false; viewModel.clearSearch()
+                            showSearch = false
+                            viewModel.processCommand(ReaderCommand.ClearSearchQuery)
                         }) {
                             Surface(
                                 modifier = Modifier.clip(RoundedCornerShape(8.dp))
@@ -151,13 +158,15 @@ fun ReaderScreen(
                                     results = currentState.searchResults,
                                     isSearching = currentState.isSearching,
                                     totalPages = currentState.totalPages,
-                                    onQueryChange = viewModel::onSearchQueryChanged,
+                                    onQueryChange = { query ->
+                                        viewModel.processCommand(ReaderCommand.InputQuery(query))
+                                    },
                                     onResultClick = { searchResult ->
-                                        viewModel.onSearchResultSelected(searchResult)
+                                        viewModel.processCommand(ReaderCommand.SelectSearchResult(searchResult))
                                         showSearch = false
                                     },
                                     onJumpToPage = { page ->
-                                        viewModel.jumpToPageNumber(page)
+                                        viewModel.processCommand(ReaderCommand.JumpToPageNumber(page))
                                         showSearch = false
                                     }
                                 )
@@ -169,9 +178,12 @@ fun ReaderScreen(
                         ModalBottomSheet(onDismissRequest = { showSettings = false }) {
                             ReaderSettingsPanel(
                                 settings = currentState.settings,
-                                onSettingsChange = viewModel::updateSettings,
-                                onIncreaseFontSize = viewModel::increaseFontSize,
-                                onDecreaseFontSize = viewModel::decreaseFontSize
+                                onSettingsChange = { settings ->
+                                    viewModel.processCommand(ReaderCommand.UpdateReaderSettings(settings))
+                                },
+                                onChangeFontSize = { newSize ->
+                                    viewModel.processCommand(ReaderCommand.ChangeFontSize(newSize))
+                                }
                             )
                         }
                     }
