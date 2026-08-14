@@ -1,60 +1,29 @@
 package com.filimonov.mylibrary.feature.reader.presentation.reader
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Brightness6
-import androidx.compose.material.icons.filled.BrightnessHigh
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -71,9 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,10 +52,9 @@ import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
-import com.filimonov.mylibrary.feature.reader.presentation.reader.CurrentPosition
-import com.filimonov.mylibrary.feature.reader.presentation.reader.LazyBookPaginator
 import com.filimonov.mylibrary.feature.reader.presentation.search.NavigationTarget
-import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
+import com.filimonov.mylibrary.feature.reader.presentation.search.SearchScreen
+import com.filimonov.mylibrary.feature.reader.presentation.settings.ReaderSettingsPanel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -456,280 +422,5 @@ private fun ChapterPageContent(
             style = style,
             color = theme.text
         )
-    }
-}
-
-@Composable
-fun ReaderSettingsPanel(
-    modifier: Modifier = Modifier,
-    settings: ReaderSettings,
-    onSettingsChange: (ReaderSettings) -> Unit,
-    onIncreaseFontSize: () -> Unit,
-    onDecreaseFontSize: () -> Unit
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp)
-    ) {
-        Text("Размер шрифта", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedIconButton(onClick = onDecreaseFontSize) {
-                Icon(Icons.Default.Remove, contentDescription = "Уменьшить шрифт")
-            }
-            Text(
-                text = "${settings.fontSize}",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.widthIn(min = 48.dp),
-                textAlign = TextAlign.Center
-            )
-            OutlinedIconButton(onClick = onIncreaseFontSize) {
-                Icon(Icons.Default.Add, contentDescription = "Увеличить шрифт")
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(24.dp))
-
-        Text("Режим чтения", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            ReadingMode.entries.forEachIndexed { index, mode ->
-                SegmentedButton(
-                    selected = settings.readingMode == mode,
-                    onClick = { onSettingsChange(settings.copy(readingMode = mode)) },
-                    shape = SegmentedButtonDefaults.itemShape(index, ReadingMode.entries.size)
-                ) {
-                    Text(
-                        if (mode == ReadingMode.HORIZONTAL) "Горизонтально" else "Вертикально"
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(24.dp))
-
-        Text("Яркость", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Default.Brightness6,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Slider(
-                value = settings.brightness,
-                onValueChange = { onSettingsChange(settings.copy(brightness = it)) },
-                valueRange = 0.1f..1f,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-            )
-            Icon(
-                Icons.Default.BrightnessHigh,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(24.dp))
-
-        Text("Тема оформления", style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            ReaderTheme.entries.forEach { theme ->
-                ThemeSwatch(
-                    theme = theme,
-                    isSelected = settings.theme == theme,
-                    onClick = { onSettingsChange(settings.copy(theme = theme)) }
-                )
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-    }
-}
-
-@Composable
-private fun ThemeSwatch(
-    modifier: Modifier = Modifier,
-    theme: ReaderTheme,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(theme.background)
-            .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f),
-                shape = CircleShape
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("Aa", color = theme.text, style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-@Composable
-fun SearchScreen(
-    modifier: Modifier = Modifier,
-    query: String,
-    results: List<SearchResult>,
-    isSearching: Boolean,
-    totalPages: Int?,
-    onQueryChange: (String) -> Unit,
-    onResultClick: (SearchResult) -> Unit,
-    onJumpToPage: (Int) -> Unit
-) {
-    var selectedTab by remember { mutableStateOf(0) }
-    var pageInput by remember { mutableStateOf("") }
-
-    val tabs = listOf("Поиск", "Переход на страницу")
-
-    Column(
-        modifier = modifier.fillMaxWidth()
-            .heightIn(max = 500.dp)
-    ) {
-        SecondaryTabRow(
-            selectedTabIndex = selectedTab
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = { Text(title) }
-                )
-            }
-        }
-
-        when (selectedTab) {
-            0 -> {
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    TextField(
-                        value = query,
-                        onValueChange = onQueryChange,
-                        placeholder = {
-                            Text("Поиск по книге…")
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        singleLine = true,
-                        trailingIcon = {
-                            if (isSearching) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            } else if (query.isNotEmpty()) {
-                                IconButton(
-                                    onClick = {
-                                        onQueryChange("")
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "Очистить поиск"
-                                    )
-                                }
-                            }
-                        }
-                    )
-
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(horizontal = 8.dp)
-                    ) {
-                        items(results) { result ->
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onResultClick(result)
-                                    }
-                                    .padding(12.dp)
-                            ) {
-                                Text(
-                                    text = "стр. ${result.globalPageIndex + 1}",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Spacer(
-                                    modifier = Modifier.height(4.dp)
-                                )
-                                Text(
-                                    text = result.snippet,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                            HorizontalDivider()
-                        }
-                    }
-                }
-            }
-
-            1 -> {
-                var pageError by remember { mutableStateOf(false) }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Переход на страницу",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    TextField(
-                        value = pageInput,
-                        onValueChange = {
-                            pageInput = it.filter(Char::isDigit)
-                            pageError = false
-                        },
-                        placeholder = {
-                            Text("Стр. 1..${totalPages ?: "?"}")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        ),
-                        isError = pageError,
-                        supportingText = {
-                            if (pageError) {
-                                Text("Введите страницу от 1 до $totalPages")
-                            }
-                        }
-                    )
-                    Button(
-                        onClick = {
-                            val page = pageInput.toIntOrNull()
-
-                            if (page != null && totalPages != null && page > 0 && page <= totalPages) {
-                                onJumpToPage(page - 1)
-                            } else {
-                                pageError = true
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Перейти")
-                    }
-                }
-            }
-        }
     }
 }
