@@ -115,68 +115,99 @@ class ReaderViewModel(
         }
     }
 
-    fun onSearchQueryChanged(query: String) {
+    fun processCommand(command: ReaderCommand) {
+        viewModelScope.launch {
+            when (command) {
+                is ReaderCommand.ChangeFontSize -> changeFontSize(command.fontSize)
+                ReaderCommand.ClearSearchQuery -> clearSearch()
+                is ReaderCommand.InputQuery -> onSearchQueryChanged(command.query)
+                is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page)
+                ReaderCommand.OnNavigationHandled -> onNavigationHandled()
+                is ReaderCommand.OnPaginationFinished -> onPaginationFinished(command.totalPages)
+                is ReaderCommand.SaveProgress -> onProgressChanged(command.progress)
+                is ReaderCommand.SelectSearchResult -> onSearchResultSelected(command.searchResult)
+                is ReaderCommand.UpdateReaderSettings -> updateSettings(command.settings)
+            }
+        }
+    }
+
+    private fun onSearchQueryChanged(query: String) {
         viewModelScope.launch {
             searchQueryFlow.emit(query)
-            _state.update { previousState ->
-                if (previousState is ReaderState.Success) previousState.copy(
+            reduce { currentState ->
+                currentState.copy(
                     searchQuery = query,
                     isSearching = true
-                ) else previousState
+                )
             }
         }
     }
 
-    fun onSearchResultSelected(result: SearchResult) {
-        _state.update { previousState ->
-            if (previousState is ReaderState.Success) {
-                previousState.copy(pendingNavigation = NavigationTarget(result.chapterIndex, result.pageIndexInChapter))
-            } else previousState
+    private fun onSearchResultSelected(result: SearchResult) {
+        reduce { currentState ->
+            currentState.copy(
+                pendingNavigation = NavigationTarget(
+                    result.chapterIndex,
+                    result.pageIndexInChapter
+                )
+            )
         }
     }
 
-    fun clearSearch() {
-        _state.update { previousState ->
-            if (previousState is ReaderState.Success) {
-                previousState.copy(searchQuery = "", searchResults = emptyList())
-            } else previousState
+    private fun clearSearch() {
+        reduce { currentState ->
+            currentState.copy(searchQuery = "", searchResults = emptyList())
         }
     }
 
-    fun jumpToPageNumber(globalPageIndex: Int) {
+    private fun jumpToPageNumber(globalPageIndex: Int) {
         val currentPaginator = paginator ?: return
-        val (chapterIndex, pageIndex) = currentPaginator.resolveGlobalPage(globalPageIndex) ?: return
-        _state.update { previousState ->
-            if (previousState is ReaderState.Success) {
-                previousState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex))
-            } else previousState
+        val (chapterIndex, pageIndex) = currentPaginator.resolveGlobalPage(globalPageIndex)
+            ?: return
+        reduce { currentState ->
+            currentState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex))
         }
     }
 
-    fun onNavigationHandled() {
-        _state.update { previousState ->
-            if (previousState is ReaderState.Success) {
-                previousState.copy(pendingNavigation = null)
-            } else previousState
+    private fun onNavigationHandled() {
+        reduce { currentState ->
+            currentState.copy(pendingNavigation = null)
         }
     }
 
-    fun onProgressChanged(progress: ReadingProgress) {
+    private fun onProgressChanged(progress: ReadingProgress) {
         viewModelScope.launch {
-            _state.update { previousState ->
-                if (previousState is ReaderState.Success) {
-                    lastProgress = progress
-                    saveProgressUseCase(progress)
-                    previousState.copy(restoredProgress = progress)
-                } else previousState
+            reduce { currentState ->
+                lastProgress = progress
+                currentState.copy(restoredProgress = progress)
             }
+            saveProgressUseCase(progress)
         }
     }
 
-    fun onPaginationFinished(totalPages: Int?) {
+    private fun onPaginationFinished(totalPages: Int?) {
+        reduce { currentState ->
+            currentState.copy(totalPages = totalPages, isSearchAvailable = true)
+        }
+    }
+
+    private fun updateSettings(newSettings: ReaderSettings) {
+        reduce { currentState ->
+            currentState.copy(settings = newSettings)
+        }
+        viewModelScope.launch {
+            saveSettingsUseCase(newSettings)
+        }
+    }
+
+    private fun changeFontSize(fontSize: Int) {
+        fontSizeRequestState.value = fontSize.coerceIn(12, 32)
+    }
+
+    private fun reduce(reducer: (ReaderState.Success) -> ReaderState.Success) {
         _state.update { previousState ->
             if (previousState is ReaderState.Success) {
-                previousState.copy(totalPages = totalPages, isSearchAvailable = true)
+                reducer(previousState)
             } else previousState
         }
     }
@@ -200,29 +231,6 @@ class ReaderViewModel(
         ).also { newPaginator ->
             paginator = newPaginator
         }
-    }
-
-    fun updateSettings(newSettings: ReaderSettings) {
-        _state.update { previousState ->
-            if (previousState is ReaderState.Success) {
-                previousState.copy(settings = newSettings)
-            } else previousState
-        }
-        viewModelScope.launch {
-            saveSettingsUseCase(newSettings)
-        }
-    }
-
-    fun increaseFontSize() {
-        val current = (_state.value as? ReaderState.Success)?.settings ?: return
-        val newSize = (current.fontSize + 2f).coerceAtMost(32f).toInt()
-        fontSizeRequestState.value = newSize
-    }
-
-    fun decreaseFontSize() {
-        val current = (_state.value as? ReaderState.Success)?.settings ?: return
-        val newSize = (current.fontSize - 2f).coerceAtLeast(12f).toInt()
-        fontSizeRequestState.value = newSize
     }
 
     override fun onCleared() {
