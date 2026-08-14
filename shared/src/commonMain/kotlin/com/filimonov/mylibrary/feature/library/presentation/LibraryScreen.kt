@@ -55,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.library.domain.model.Book
+import com.filimonov.mylibrary.feature.library.presentation.utils.asString
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
@@ -65,9 +66,11 @@ import mylibrary.shared.generated.resources.favorite_books_empty
 import mylibrary.shared.generated.resources.filter_all
 import mylibrary.shared.generated.resources.filter_favorite
 import mylibrary.shared.generated.resources.filter_read
+import mylibrary.shared.generated.resources.invalid_epub_exception
 import mylibrary.shared.generated.resources.library_title
 import mylibrary.shared.generated.resources.ok
 import mylibrary.shared.generated.resources.read_books_empty
+import mylibrary.shared.generated.resources.unknown_error
 import okio.FileSystem
 import okio.Path.Companion.toPath
 import okio.SYSTEM
@@ -114,13 +117,19 @@ fun LibraryScreen(
         }
     ) { innerPadding ->
         val bookAlreadyAdded = stringResource(Res.string.book_already_added)
+        val invalidEpubException = stringResource(Res.string.invalid_epub_exception)
+        val unknownError = stringResource(Res.string.unknown_error)
         val ok = stringResource(Res.string.ok)
         LaunchedEffect(Unit) {
             viewModel.event.collect { event ->
                 when (event) {
-                    LibraryEvent.Error -> {
+                    is LibraryEvent.Error -> {
                         snackbarHostState.showSnackbar(
-                            message = bookAlreadyAdded,
+                            message = event.error.asString(
+                                bookAlreadyAdded,
+                                invalidEpubException,
+                                unknownError
+                            ),
                             actionLabel = ok
                         )
                     }
