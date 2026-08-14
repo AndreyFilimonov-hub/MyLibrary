@@ -84,11 +84,7 @@ class ReaderViewModel(
                     val current = (_state.value as? ReaderState.Success)?.settings ?: return@collect
                     val newSettings =
                         current.copy(fontSize = newSize, lineHeight = (newSize * 1.5f).toInt())
-                    _state.update { previousState ->
-                        if (previousState is ReaderState.Success) previousState.copy(settings = newSettings)
-                        else previousState
-                    }
-                    saveSettingsUseCase(newSettings)
+                    updateSettings(newSettings)
                 }
         }
     }
@@ -103,13 +99,11 @@ class ReaderViewModel(
                         currentPaginator.searchByQuery(query)
                     }
 
-                    _state.update { previousState ->
-                        if (previousState is ReaderState.Success) {
-                            previousState.copy(
-                                searchResults = result,
-                                isSearching = false
-                            )
-                        } else previousState
+                    reduce { currentState ->
+                        currentState.copy(
+                            searchResults = result,
+                            isSearching = false
+                        )
                     }
                 }
         }
