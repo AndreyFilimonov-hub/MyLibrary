@@ -161,7 +161,7 @@ class LazyBookPaginator(
     }
 
     fun htmlToAnnotatedString(html: String): AnnotatedString {
-        val document = Ksoup.parse(html, Parser.Companion.xmlParser())
+        val document = Ksoup.parse(html, Parser.xmlParser())
 
         val blockTags = setOf("p", "div", "section", "blockquote", "li")
         val headerTags = setOf("h1", "h2", "h3", "h4", "h5", "h6")
@@ -193,39 +193,39 @@ class LazyBookPaginator(
 
                         when (tag) {
                             "b", "strong" -> addStyle(
-                                SpanStyle(fontWeight = FontWeight.Companion.Bold),
+                                SpanStyle(fontWeight = FontWeight.Bold),
                                 start,
                                 length
                             )
 
                             "i", "em", "cite" -> addStyle(
-                                SpanStyle(fontStyle = FontStyle.Companion.Italic),
+                                SpanStyle(fontStyle = FontStyle.Italic),
                                 start,
                                 length
                             )
 
                             "u" -> addStyle(
-                                SpanStyle(textDecoration = TextDecoration.Companion.Underline),
+                                SpanStyle(textDecoration = TextDecoration.Underline),
                                 start,
                                 length
                             )
 
                             "s", "strike", "del" -> addStyle(
-                                SpanStyle(textDecoration = TextDecoration.Companion.LineThrough),
+                                SpanStyle(textDecoration = TextDecoration.LineThrough),
                                 start,
                                 length
                             )
 
                             "sub" -> addStyle(
                                 SpanStyle(
-                                    baselineShift = BaselineShift.Companion.Subscript,
+                                    baselineShift = BaselineShift.Subscript,
                                     fontSize = 12.sp
                                 ), start, length
                             )
 
                             "sup" -> addStyle(
                                 SpanStyle(
-                                    baselineShift = BaselineShift.Companion.Superscript,
+                                    baselineShift = BaselineShift.Superscript,
                                     fontSize = 12.sp
                                 ), start, length
                             )
@@ -241,11 +241,11 @@ class LazyBookPaginator(
                             addStyle(
                                 SpanStyle(
                                     fontSize = size,
-                                    fontWeight = FontWeight.Companion.Bold
+                                    fontWeight = FontWeight.Bold
                                 ), start, length
                             )
                             addStyle(
-                                ParagraphStyle(textAlign = TextAlign.Companion.Center),
+                                ParagraphStyle(textAlign = TextAlign.Center),
                                 start,
                                 length
                             )
@@ -255,14 +255,14 @@ class LazyBookPaginator(
                         if (inlineStyle.isNotBlank()) {
                             if (Regex("font-weight\\s*:\\s*bold").containsMatchIn(inlineStyle)) {
                                 addStyle(
-                                    SpanStyle(fontWeight = FontWeight.Companion.Bold),
+                                    SpanStyle(fontWeight = FontWeight.Bold),
                                     start,
                                     length
                                 )
                             }
                             if (Regex("font-weight\\s*:\\s*italic").containsMatchIn(inlineStyle)) {
                                 addStyle(
-                                    SpanStyle(fontStyle = FontStyle.Companion.Italic),
+                                    SpanStyle(fontStyle = FontStyle.Italic),
                                     start,
                                     length
                                 )
