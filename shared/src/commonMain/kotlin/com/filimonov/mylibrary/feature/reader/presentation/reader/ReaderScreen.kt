@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
+import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
@@ -227,8 +228,8 @@ fun BookScreen(
             val fullSize =
                 with(LocalDensity.current) { IntSize(maxWidth.roundToPx(), maxHeight.roundToPx()) }
 
-            val horizontalPaddingPx = with(LocalDensity.current) { 24.dp.toPx() * 2 }.toInt()
-            val verticalPaddingPx = with(LocalDensity.current) { 8.dp.toPx() * 2 }.toInt()
+            val horizontalPaddingPx = with(LocalDensity.current) { AppDimension.xxl.toPx() * 2 }.toInt()
+            val verticalPaddingPx = with(LocalDensity.current) { AppDimension.sm.toPx() * 2 }.toInt()
 
             val rawContainerSize = IntSize(
                 width = (fullSize.width - horizontalPaddingPx).coerceAtLeast(0),
@@ -315,7 +316,7 @@ fun BookScreen(
                     onCurrentPageInChapterChanged = { pageIndex ->
                         displayedPosition = CurrentPosition(chapterIndex, pageIndex)
                     },
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = AppDimension.xxl, vertical = AppDimension.sm)
                 )
             }
 
@@ -332,7 +333,7 @@ fun BookScreen(
         }
 
         Text(
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(AppDimension.sm),
             text = pageInfo,
             color = settings.theme.text
         )

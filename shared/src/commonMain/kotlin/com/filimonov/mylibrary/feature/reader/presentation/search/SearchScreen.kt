@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.filimonov.mylibrary.core.ui.theme.AppDimension
 
 @Composable
 fun SearchScreen(
@@ -71,19 +72,19 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     TextField(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(AppDimension.sm),
                         value = query,
                         onValueChange = onQueryChange,
                         placeholder = {
                             Text("Поиск по книге…")
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
                         singleLine = true,
                         trailingIcon = {
                             if (isSearching) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(AppDimension.xl)
                                 )
                             } else if (query.isNotEmpty()) {
                                 IconButton(
@@ -104,7 +105,7 @@ fun SearchScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .padding(horizontal = 8.dp)
+                            .padding(horizontal = AppDimension.sm)
                     ) {
                         items(results) { result ->
                             Column(
@@ -113,7 +114,7 @@ fun SearchScreen(
                                     .clickable {
                                         onResultClick(result)
                                     }
-                                    .padding(12.dp)
+                                    .padding(AppDimension.md)
                             ) {
                                 Text(
                                     text = "стр. ${result.globalPageIndex + 1}",
@@ -138,14 +139,15 @@ fun SearchScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(AppDimension.lg),
+                    verticalArrangement = Arrangement.spacedBy(AppDimension.md)
                 ) {
                     Text(
                         text = "Переход на страницу",
                         style = MaterialTheme.typography.titleMedium
                     )
                     TextField(
+                        modifier = Modifier.fillMaxWidth(),
                         value = pageInput,
                         onValueChange = {
                             pageInput = it.filter(Char::isDigit)
@@ -154,7 +156,6 @@ fun SearchScreen(
                         placeholder = {
                             Text("Стр. 1..${totalPages ?: "?"}")
                         },
-                        modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number
@@ -167,6 +168,7 @@ fun SearchScreen(
                         }
                     )
                     Button(
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = {
                             val page = pageInput.toIntOrNull()
 
@@ -175,8 +177,7 @@ fun SearchScreen(
                             } else {
                                 pageError = true
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                        }
                     ) {
                         Text("Перейти")
                     }

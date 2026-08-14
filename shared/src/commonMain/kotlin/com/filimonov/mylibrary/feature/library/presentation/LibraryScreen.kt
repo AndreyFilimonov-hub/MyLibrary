@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
+import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -160,8 +161,8 @@ private fun LibraryContent(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = AppDimension.md),
+            horizontalArrangement = Arrangement.spacedBy(AppDimension.sm),
             verticalAlignment = Alignment.CenterVertically
         ) {
             LibraryFilter.entries.forEach { filter ->
@@ -183,14 +184,14 @@ private fun LibraryContent(
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(top = 12.dp),
+                    .padding(top = AppDimension.md),
                 contentPadding = PaddingValues(bottom = 108.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(AppDimension.md)
             ) {
                 items(books, key = { it.id }) { book ->
                     SwipeToDeleteBookItem(
                         modifier = Modifier
-                            .padding(horizontal = 12.dp),
+                            .padding(horizontal = AppDimension.md),
                         book = book,
                         onClick = {
                             onBookClick(book.id)
@@ -300,9 +301,9 @@ private fun SwipeToDeleteBookItem(
         backgroundContent = {
             Box(
                 modifier = Modifier.fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(AppDimension.md))
                     .background(MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = AppDimension.xxl),
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
@@ -335,14 +336,14 @@ private fun BookItem(
             .clickable { onClick() }
     ) {
         Row(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(AppDimension.md)
                 .height(IntrinsicSize.Min)
         ) {
             BookCover(
                 coverPath = book.coverPath
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(AppDimension.md))
 
             BookInfo(
                 modifier = Modifier.weight(1f),
@@ -364,7 +365,7 @@ private fun BookCover(
             width = 64.dp,
             height = 96.dp
         ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(AppDimension.sm),
         tonalElevation = 2.dp
     ) {
         if (coverPath != null) {
@@ -405,7 +406,7 @@ private fun BookInfo(
             style = MaterialTheme.typography.titleMedium,
             maxLines = 2
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(AppDimension.xs))
         Text(
             text = book.author,
             style = MaterialTheme.typography.bodyMedium,
