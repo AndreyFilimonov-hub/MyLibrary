@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.feature.reader.presentation
+package com.filimonov.mylibrary.feature.reader.presentation.reader
 
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -13,7 +13,9 @@ import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUs
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveSettingsUseCase
-import com.filimonov.mylibrary.feature.reader.presentation.utils.LazyBookPaginator
+import com.filimonov.mylibrary.feature.reader.presentation.search.NavigationTarget
+import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(FlowPreview::class)
 class ReaderViewModel(
@@ -49,7 +52,7 @@ class ReaderViewModel(
     init {
         loadBook()
         observeFontSizeChanges()
-//        observeSearchQuery()
+        observeSearchQuery()
     }
 
     private fun loadBook() {
@@ -90,6 +93,74 @@ class ReaderViewModel(
         }
     }
 
+    private fun observeSearchQuery() {
+        viewModelScope.launch {
+            searchQueryFlow
+                .debounce(500)
+                .collect { query ->
+                    val currentPaginator = paginator ?: return@collect
+                    val result = withContext(Dispatchers.Default) {
+                        currentPaginator.searchByQuery(query)
+                    }
+
+                    _state.update { previousState ->
+                        if (previousState is ReaderState.Success) {
+                            previousState.copy(
+                                searchResults = result,
+                                isSearching = false
+                            )
+                        } else previousState
+                    }
+                }
+        }
+    }
+
+    fun onSearchQueryChanged(query: String) {
+        viewModelScope.launch {
+            searchQueryFlow.emit(query)
+            _state.update { previousState ->
+                if (previousState is ReaderState.Success) previousState.copy(
+                    searchQuery = query,
+                    isSearching = true
+                ) else previousState
+            }
+        }
+    }
+
+    fun onSearchResultSelected(result: SearchResult) {
+        _state.update { previousState ->
+            if (previousState is ReaderState.Success) {
+                previousState.copy(pendingNavigation = NavigationTarget(result.chapterIndex, result.pageIndexInChapter))
+            } else previousState
+        }
+    }
+
+    fun clearSearch() {
+        _state.update { previousState ->
+            if (previousState is ReaderState.Success) {
+                previousState.copy(searchQuery = "", searchResults = emptyList())
+            } else previousState
+        }
+    }
+
+    fun jumpToPageNumber(globalPageIndex: Int) {
+        val currentPaginator = paginator ?: return
+        val (chapterIndex, pageIndex) = currentPaginator.resolveGlobalPage(globalPageIndex) ?: return
+        _state.update { previousState ->
+            if (previousState is ReaderState.Success) {
+                previousState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex))
+            } else previousState
+        }
+    }
+
+    fun onNavigationHandled() {
+        _state.update { previousState ->
+            if (previousState is ReaderState.Success) {
+                previousState.copy(pendingNavigation = null)
+            } else previousState
+        }
+    }
+
     fun onProgressChanged(progress: ReadingProgress) {
         viewModelScope.launch {
             _state.update { previousState ->
@@ -102,13 +173,11 @@ class ReaderViewModel(
         }
     }
 
-    override fun onCleared() {
-        paginator?.cancel()
-        paginator = null
-        lastProgress?.let { progress ->
-            viewModelScope.launch(NonCancellable) {
-                saveProgressUseCase(progress)
-            }
+    fun onPaginationFinished(totalPages: Int?) {
+        _state.update { previousState ->
+            if (previousState is ReaderState.Success) {
+                previousState.copy(totalPages = totalPages, isSearchAvailable = true)
+            } else previousState
         }
     }
 
@@ -156,59 +225,13 @@ class ReaderViewModel(
         fontSizeRequestState.value = newSize
     }
 
-//    private fun observeSearchQuery() {
-//        viewModelScope.launch {
-//            searchQueryFlow
-//                .debounce(300)
-//                .collectLatest { query ->
-//                    if (query.isBlank()) {
-//                        _state.update { it.copy(searchResults = emptyList(), isSearching = false) }
-//                        return@collectLatest
-//                    }
-//                    _state.update { it.copy(isSearching = true) }
-//                    val results = searchIndex.search(query)
-//                    _state.update { it.copy(searchResults = results, isSearching = false) }
-//                }
-//        }
-//    }
-
-//    fun onSearchQueryChanged(query: String) {
-//        _state.update { it.copy(searchQuery = query) }
-//        searchQueryFlow.value = query
-//    }
-//
-//    fun onSearchResultSelected(result: SearchResult) {
-//        _state.update { it.copy(pendingNavigation = result) }
-//    }
-//
-//    fun onNavigationHandled() {
-//        _state.update { it.copy(pendingNavigation = null) }
-//    }
-//
-//    fun clearSearch() {
-//        _state.update { it.copy(searchQuery = "", searchResults = emptyList()) }
-//        searchQueryFlow.value = ""
-//    }
-
-//    fun jumpToGlobalPage(
-//        globalPageIndex: Int,
-//        paginator: LazyBookPaginator,
-//        chapters: List<Chapter>
-//    ) {
-//        viewModelScope.launch {
-//            var acc = 0
-//            for ((chapterIndex, chapter) in chapters.withIndex()) {
-//                val pages = paginator.ensurePaginatedAwait(chapterIndex)
-//                if (globalPageIndex < acc + pages.size) {
-//                    val pageInChapter = globalPageIndex - acc
-//                    val charIndex = pages.take(pageInChapter).sumOf { it.length }
-//                    onSearchResultSelected(
-//                        SearchResult(chapterIndex, charIndex, snippet = "")
-//                    )
-//                    return@launch
-//                }
-//                acc += pages.size
-//            }
-//        }
-//    }
+    override fun onCleared() {
+        paginator?.cancel()
+        paginator = null
+        lastProgress?.let { progress ->
+            viewModelScope.launch(NonCancellable) {
+                saveProgressUseCase(progress)
+            }
+        }
+    }
 }
