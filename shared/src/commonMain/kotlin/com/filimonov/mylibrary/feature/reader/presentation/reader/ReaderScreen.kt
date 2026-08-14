@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
+import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
@@ -57,6 +58,9 @@ import com.filimonov.mylibrary.feature.reader.presentation.search.SearchScreen
 import com.filimonov.mylibrary.feature.reader.presentation.settings.ReaderSettingsPanel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import mylibrary.shared.generated.resources.Res
+import mylibrary.shared.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -93,21 +97,23 @@ fun ReaderScreen(
                         TopAppBar(
                             title = { Text("") },
                             actions = {
+                                val waitForBookLoading = stringResource(Res.string.wait_for_book_loading)
+                                val ok = stringResource(Res.string.ok)
                                 IconButton(onClick = {
                                     scope.launch {
                                         if (currentState.isSearchAvailable) {
                                             showSearch = true
                                         } else {
                                             snackbarHostState.showSnackbar(
-                                                "Дождитесь полной загрузки книги",
-                                                "OK"
+                                                waitForBookLoading,
+                                                ok
                                             )
                                         }
                                     }
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.Search,
-                                        contentDescription = "Поиск",
+                                        contentDescription = stringResource(Res.string.search),
                                         tint = currentState.settings.theme.text
                                     )
                                 }
@@ -116,7 +122,7 @@ fun ReaderScreen(
                                 }) {
                                     Icon(
                                         imageVector = Icons.Default.Settings,
-                                        contentDescription = "Настройки",
+                                        contentDescription = stringResource(Res.string.settings),
                                         tint = currentState.settings.theme.text
                                     )
                                 }
@@ -220,15 +226,16 @@ fun BookScreen(
         modifier = modifier
             .fillMaxSize()
     ) {
-        var pageInfo by remember { mutableStateOf("... / ...") }
+        val pageInfoTemplate = stringResource(Res.string.page_info_template)
+        var pageInfo by remember { mutableStateOf(pageInfoTemplate) }
         var displayedPosition by remember { mutableStateOf(CurrentPosition(0, 0)) }
 
         BoxWithConstraints(modifier = Modifier.weight(1f)) {
             val fullSize =
                 with(LocalDensity.current) { IntSize(maxWidth.roundToPx(), maxHeight.roundToPx()) }
 
-            val horizontalPaddingPx = with(LocalDensity.current) { 24.dp.toPx() * 2 }.toInt()
-            val verticalPaddingPx = with(LocalDensity.current) { 8.dp.toPx() * 2 }.toInt()
+            val horizontalPaddingPx = with(LocalDensity.current) { AppDimension.xxl.toPx() * 2 }.toInt()
+            val verticalPaddingPx = with(LocalDensity.current) { AppDimension.sm.toPx() * 2 }.toInt()
 
             val rawContainerSize = IntSize(
                 width = (fullSize.width - horizontalPaddingPx).coerceAtLeast(0),
@@ -315,7 +322,7 @@ fun BookScreen(
                     onCurrentPageInChapterChanged = { pageIndex ->
                         displayedPosition = CurrentPosition(chapterIndex, pageIndex)
                     },
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = AppDimension.xxl, vertical = AppDimension.sm)
                 )
             }
 
@@ -325,14 +332,15 @@ fun BookScreen(
             )
 
             val totalPages = paginator.totalPages()
-
-            LaunchedEffect(globalPageIndex, totalPages) {
-                pageInfo = "стр ${globalPageIndex?.plus(1) ?: "..."} / ${totalPages ?: "..."}"
-            }
+            pageInfo = stringResource(
+                Res.string.page_info,
+                globalPageIndex?.plus(1)?.toString() ?: "...",
+                totalPages?.toString() ?: "..."
+            )
         }
 
         Text(
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(8.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally).padding(AppDimension.sm),
             text = pageInfo,
             color = settings.theme.text
         )
