@@ -424,10 +424,17 @@ private fun ChapterPageContent(
         forcedPageIndex?.let { innerPagerState.scrollToPage(it.coerceIn(0, pages.lastIndex)) }
     }
 
+    var isFirstSettleAfterRepagination by remember(pages) { mutableStateOf(true) }
+
     if (isActiveChapter) {
         LaunchedEffect(innerPagerState.settledPage, pages) {
-            onCharIndexChanged(pageStartOffsets.getOrElse(innerPagerState.settledPage) { 0 })
-            onCurrentPageInChapterChanged(innerPagerState.settledPage)
+            if (isFirstSettleAfterRepagination) {
+                isFirstSettleAfterRepagination = false
+                onCurrentPageInChapterChanged(innerPagerState.settledPage)
+            } else {
+                onCharIndexChanged(pageStartOffsets.getOrElse(innerPagerState.settledPage) { 0 })
+                onCurrentPageInChapterChanged(innerPagerState.settledPage)
+            }
         }
     }
 
