@@ -187,7 +187,11 @@ class ReaderViewModel(
 
     private fun updateSettings(newSettings: ReaderSettings) {
         reduce { currentState ->
-            currentState.copy(settings = newSettings)
+            if (currentState.settings.fontSize != newSettings.fontSize) {
+                currentState.copy(settings = newSettings, isSearchAvailable = false)
+            } else {
+                currentState.copy(settings = newSettings)
+            }
         }
         viewModelScope.launch {
             saveSettingsUseCase(newSettings)
