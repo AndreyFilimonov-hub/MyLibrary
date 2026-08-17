@@ -23,14 +23,14 @@ fun AppNavHost() {
         ) {
             composable<LibraryRoute> {
                 LibraryScreen(
-                    onBookClick = { bookId ->
-                        navController.navigate(ReaderRoute(bookId))
+                    onBookClick = { bookId, bookTitle ->
+                        navController.navigate(ReaderRoute(bookId, bookTitle))
                     }
                 )
             }
             composable<ReaderRoute> { entry ->
                 val route = entry.toRoute<ReaderRoute>()
-                ReaderScreen(bookId = route.bookId)
+                ReaderScreen(bookId = route.bookId, bookTitle = route.bookTitle)
             }
         }
     }

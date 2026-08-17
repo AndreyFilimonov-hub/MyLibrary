@@ -40,7 +40,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +71,7 @@ import org.koin.core.parameter.parametersOf
 fun ReaderScreen(
     modifier: Modifier = Modifier,
     bookId: Long,
+    bookTitle: String,
     viewModel: ReaderViewModel = koinViewModel(
         parameters = {
             parametersOf(bookId)
@@ -95,7 +98,15 @@ fun ReaderScreen(
                     containerColor = currentState.settings.theme.background,
                     topBar = {
                         TopAppBar(
-                            title = { Text("") },
+                            title = {
+                                Text(
+                                    text = bookTitle,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    textAlign = TextAlign.Center
+                                )
+                            },
                             actions = {
                                 val waitForBookLoading = stringResource(Res.string.wait_for_book_loading)
                                 val ok = stringResource(Res.string.ok)
