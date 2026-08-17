@@ -81,7 +81,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun LibraryScreen(
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel(),
-    onBookClick: (Long) -> Unit
+    onBookClick: (Long, String) -> Unit
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle()
 
@@ -173,7 +173,7 @@ private fun LibraryContent(
     books: List<Book>,
     selectedFilter: LibraryFilter,
     onFilterChipClick: (LibraryFilter) -> Unit,
-    onBookClick: (Long) -> Unit,
+    onBookClick: (Long, String) -> Unit,
     onBookDelete: (Long) -> Unit,
     onToggleRead: (Book) -> Unit,
     onToggleFavorite: (Book) -> Unit
@@ -216,7 +216,7 @@ private fun LibraryContent(
                             .padding(horizontal = AppDimension.md),
                         book = book,
                         onClick = {
-                            onBookClick(book.id)
+                            onBookClick(book.id, book.title)
                         },
                         onDelete = {
                             onBookDelete(book.id)
