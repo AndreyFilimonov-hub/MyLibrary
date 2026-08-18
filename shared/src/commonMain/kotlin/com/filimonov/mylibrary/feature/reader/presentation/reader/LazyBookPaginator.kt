@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import com.filimonov.mylibrary.core.coroutine.PriorityTaskExecutor
+import com.filimonov.mylibrary.core.coroutine.TaskPriority
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import com.fleeksoft.ksoup.Ksoup
@@ -38,6 +40,7 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
 import com.fleeksoft.ksoup.parser.Parser
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -48,8 +51,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 
@@ -62,6 +63,7 @@ class LazyBookPaginator(
 ) {
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val taskExecutor = PriorityTaskExecutor()
 
     private val chapterPages = mutableStateMapOf<Int, List<AnnotatedString>>()
     private val inProgress = mutableMapOf<Int, Deferred<List<AnnotatedString>>>()
@@ -75,24 +77,29 @@ class LazyBookPaginator(
         private set
 
     suspend fun countAllPagesInBackground() = coroutineScope {
-        val semaphore = Semaphore(4)
         val jobs = chapters.indices.map { chapterIndex ->
-            async(Dispatchers.Default) {
-                semaphore.withPermit {
-                    val count = chapterPages[chapterIndex]?.size ?: run {
-                        val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
-                        val pages =
-                            paginateChapterGreedy(
-                                annotated,
-                                placeholders,
-                                textMeasurer,
-                                style,
-                                containerSize
-                            )
-                        chapterPages[chapterIndex] = pages
-                        pages.size
+            async {
+                if (chapterPages[chapterIndex] != null) {
+                    pageCounts[chapterIndex] = chapterPages[chapterIndex]!!.size
+                    return@async
+                }
+                taskExecutor.execute(TaskPriority.BACKGROUND) {
+                    if (chapterPages[chapterIndex] != null) {
+                        pageCounts[chapterIndex] = chapterPages[chapterIndex]!!.size
+                        return@execute
                     }
-                    pageCounts[chapterIndex] = count
+                    val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
+                    val pages =
+                        paginateChapterGreedy(
+                            annotated,
+                            placeholders,
+                            textMeasurer,
+                            style,
+                            containerSize
+                        )
+
+                    chapterPages[chapterIndex] = pages
+                    pageCounts[chapterIndex] = pages.size
                 }
             }
         }
@@ -114,16 +121,31 @@ class LazyBookPaginator(
             chapterPages[chapterIndex]?.let { return@withContext it }
             inProgress[chapterIndex]?.let { return@withContext it.await() }
 
-            val deferred = scope.async(Dispatchers.Default) {
-                val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
-                paginateChapterGreedy(annotated, placeholders, textMeasurer, style, containerSize)
-            }
+            val deferred = CompletableDeferred<List<AnnotatedString>>()
             inProgress[chapterIndex] = deferred
-            val result = deferred.await()
-            chapterPages[chapterIndex] = result
-            pageCounts[chapterIndex] = result.size
-            inProgress.remove(chapterIndex)
-            result
+
+            taskExecutor.execute(TaskPriority.HIGH) {
+                try {
+                    val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
+                    val pages = paginateChapterGreedy(
+                        annotated,
+                        placeholders,
+                        textMeasurer,
+                        style,
+                        containerSize
+                    )
+                    chapterPages[chapterIndex] = pages
+                    pageCounts[chapterIndex] = pages.size
+
+                    deferred.complete(pages)
+                } catch (e: Throwable) {
+                    deferred.completeExceptionally(e)
+                } finally {
+                    inProgress.remove(chapterIndex)
+                }
+            }
+
+            deferred.await()
         }
     }
 
