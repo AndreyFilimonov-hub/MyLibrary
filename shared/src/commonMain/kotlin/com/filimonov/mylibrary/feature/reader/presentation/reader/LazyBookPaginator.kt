@@ -431,103 +431,193 @@ class LazyBookPaginator(
         style: TextStyle,
         containerSize: IntSize
     ): List<AnnotatedString> {
-        if (text.text.isBlank() || containerSize.width <= 0 || containerSize.height <= 0) return emptyList()
+
+        if (
+            text.text.isBlank() ||
+            containerSize.width <= 0 ||
+            containerSize.height <= 0
+        ) {
+            return emptyList()
+        }
 
         val pages = mutableListOf<AnnotatedString>()
-        var startIndex = 0
         val textLength = text.length
+
+        var startIndex = 0
+
+        var windowSize = 12_000
+
+        val minWindowSize = 2_000
+        val maxWindowSize = 50_000
+
         val safetyMarginPx = 16f
+        val availableBottom =
+            containerSize.height - safetyMarginPx
 
-        while (startIndex < textLength) {
-            val remaining = text.subSequence(startIndex, textLength)
-
-            val remainingPlaceholders = placeholders
-                .filter { it.start >= startIndex && it.end <= textLength }
-                .map {
-                    AnnotatedString.Range(
-                        item = it.item,
-                        start = it.start - startIndex,
-                        end = it.end - startIndex,
-                        tag = it.tag
-                    )
-                }
-
-            val cappedPlaceholders = remainingPlaceholders.map { range ->
-                val maxHeight = (containerSize.height - safetyMarginPx).coerceAtLeast(1f)
-                if (range.item.height.value > maxHeight) {
-                    val scale = maxHeight / range.item.height.value
-                    AnnotatedString.Range(
-                        item = range.item.copy(
-                            width = (range.item.width.value * scale).sp,
-                            height = maxHeight.sp
-                        ),
-                        start = range.start,
-                        end = range.end,
-                        tag = range.tag
-                    )
-                } else range
+        val maxImageHeightSp = with(density) {
+                availableBottom
+                    .coerceAtLeast(1f)
+                    .toSp()
             }
 
-            val result = textMeasurer.measure(
-                text = remaining,
-                style = style,
-                placeholders = cappedPlaceholders,
-                constraints = Constraints(maxWidth = containerSize.width)
-            )
+        while (startIndex < textLength) {
+            var windowEnd = minOf(startIndex + windowSize, textLength)
 
-            val availableBottom = containerSize.height - safetyMarginPx
+            placeholders.firstOrNull { it.start < windowEnd && it.end > windowEnd }
+                ?.let {
+                    windowEnd = it.end.coerceAtMost(textLength)
+                }
 
-            val placeholderRects = result.placeholderRects
+            val windowText = text.subSequence(startIndex, windowEnd)
+
+            val windowPlaceholders =
+                placeholders
+                    .filter { it.start >= startIndex && it.end <= windowEnd }
+                    .map { range ->
+
+                        AnnotatedString.Range(
+                            item = range.item,
+                            start = range.start - startIndex,
+                            end = range.end - startIndex,
+                            tag = range.tag
+                        )
+                    }
+
+            val cappedPlaceholders =
+                windowPlaceholders.map { range ->
+                    if (
+                        range.item.height.value >
+                        maxImageHeightSp.value
+                    ) {
+
+                        val scale = maxImageHeightSp.value / range.item.height.value
+
+                        AnnotatedString.Range(
+                            item = range.item.copy(
+                                width = (range.item.width.value * scale).sp,
+                                height = maxImageHeightSp
+                            ),
+                            start = range.start,
+                            end = range.end,
+                            tag = range.tag
+                        )
+                    } else {
+                        range
+                    }
+                }
+
+            val result =
+                textMeasurer.measure(
+                    text = windowText,
+                    style = style,
+                    placeholders = cappedPlaceholders,
+                    constraints = Constraints(
+                        maxWidth = containerSize.width
+                    )
+                )
 
             var lastFittingLine = -1
+
             for (line in 0 until result.lineCount) {
-                val lineBottom = result.multiParagraph.getLineBottom(line)
-                if (lineBottom <= availableBottom) {
+                val bottom = result.multiParagraph.getLineBottom(line)
+
+                if (bottom <= availableBottom) {
                     lastFittingLine = line
                 } else {
                     break
                 }
             }
 
-            if (lastFittingLine == -1) {
-                val end = result.multiParagraph.getLineEnd(0, visibleEnd = true).coerceAtLeast(1)
-                pages += text.subSequence(startIndex, (startIndex + end).coerceAtMost(textLength))
-                startIndex += end
+            if (lastFittingLine == result.lineCount - 1 && windowEnd < textLength) {
+                windowSize =
+                    (windowSize * 2)
+                        .coerceAtMost(maxWindowSize)
+
                 continue
             }
 
-            val endInRemaining = result.multiParagraph.getLineEnd(lastFittingLine, visibleEnd = true)
-            var safeEnd = (startIndex + endInRemaining).coerceIn(startIndex + 1, textLength)
+            if (lastFittingLine == -1) {
 
-            cappedPlaceholders.forEachIndexed { index, placeholder ->
-                val absoluteImageStart = startIndex + placeholder.start
-                if (absoluteImageStart >= safeEnd) return@forEachIndexed
+                val end = result.multiParagraph.getLineEnd(0, visibleEnd = true).coerceAtLeast(1)
 
-                val rect = placeholderRects.getOrNull(index) ?: return@forEachIndexed
+                val absoluteEnd = (startIndex + end).coerceAtMost(textLength)
 
-                if (rect.bottom > availableBottom) {
-                    safeEnd = if (absoluteImageStart > startIndex) {
-                        absoluteImageStart
-                    } else {
-                        (startIndex + placeholder.end).coerceIn(startIndex + 1, textLength)
+                pages += text.subSequence(startIndex, absoluteEnd)
+
+                startIndex = absoluteEnd
+
+                continue
+            }
+
+            val endInWindow = result.multiParagraph.getLineEnd(lastFittingLine, visibleEnd = true)
+
+            var safeEnd = (startIndex + endInWindow).coerceIn(startIndex + 1, windowEnd)
+
+            result.placeholderRects
+                .forEachIndexed { index, rect ->
+                    val placeholder =
+                        cappedPlaceholders
+                            .getOrNull(index)
+                            ?: return@forEachIndexed
+
+                    val imageStart =
+                        startIndex + placeholder.start
+
+                    if (imageStart >= safeEnd) {
+                        return@forEachIndexed
                     }
+
+                    rect?.bottom?.let {
+                        if (it > availableBottom) {
+                            safeEnd = if (imageStart > startIndex) {
+                                imageStart
+                            } else {
+                                (startIndex + placeholder.end).coerceAtMost(textLength)
+                            }
+                        }
+                    }
+                }
+
+            val endsWithPlaceholder = placeholders.any {
+                it.end == safeEnd
+            }
+
+            if (!endsWithPlaceholder && safeEnd < textLength) {
+                var wordStart = safeEnd
+
+                while (wordStart > startIndex && !text.text[wordStart - 1].isWhitespace()) {
+                    wordStart--
+                }
+
+                if (wordStart > startIndex) {
+                    safeEnd = wordStart
                 }
             }
 
-            if (safeEnd < textLength && text.text.getOrNull(safeEnd - 1) != '\uFFFC') {
-                var i = safeEnd
-                while (i > startIndex && !text.text[i - 1].isWhitespace()) i--
-                if (i > startIndex) safeEnd = i
-            }
-
             safeEnd = safeEnd.coerceIn(startIndex + 1, textLength)
+
             pages += text.subSequence(startIndex, safeEnd)
+
+            val consumed =
+                safeEnd - startIndex
+
             startIndex = safeEnd
 
-            while (startIndex < textLength && text.text[startIndex].isWhitespace() && text.text[startIndex] != '\n') {
+            while (
+                startIndex < textLength &&
+                text.text[startIndex].isWhitespace() &&
+                text.text[startIndex] != '\n'
+            ) {
                 startIndex++
             }
+
+            if (consumed < windowSize / 3) {
+                windowSize = (windowSize / 2).coerceAtLeast(minWindowSize)
+            } else if (consumed > windowSize * 0.8f) {
+                windowSize = (windowSize * 3 / 2).coerceAtMost(maxWindowSize)
+            }
         }
+
         return pages
     }
 
@@ -554,6 +644,7 @@ class LazyBookPaginator(
 
     fun cancel() {
         scope.cancel()
+        taskExecutor.cancel()
         chapterPages.clear()
         pageCounts.clear()
         inProgress.clear()
