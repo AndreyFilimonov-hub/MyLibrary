@@ -28,6 +28,8 @@ class ContentParser {
             val spine = parsed.spine
             val references = spine.getSpineReferences()
 
+            val resourcesMap = parsed.resources.resourceMap
+
             for ((index, reference) in references.withIndex()) {
                 val resource = reference.resource
                 val html = resource?.data?.decodeToString() ?: continue
@@ -42,10 +44,23 @@ class ContentParser {
                     ?.trim()
                     ?.takeIf { it.isNotBlank() }
 
+                val images = mutableMapOf<String, ByteArray?>()
+
+                doc.select("img[src]").forEach { img ->
+                    val src = img.attr("src")
+
+                    val imageResource = resourcesMap[src]
+
+                    if (imageResource != null) {
+                        images[src] = imageResource.data
+                    }
+                }
+
                 chapters += Chapter(
                     id = index,
                     title = title,
-                    content = html
+                    content = html,
+                    images = images.ifEmpty { null }
                 )
             }
 

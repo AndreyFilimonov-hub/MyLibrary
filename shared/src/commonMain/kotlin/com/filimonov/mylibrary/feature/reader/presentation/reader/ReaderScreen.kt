@@ -1,17 +1,25 @@
 package com.filimonov.mylibrary.feature.reader.presentation.reader
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -29,6 +37,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -36,13 +45,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -229,7 +243,7 @@ fun BookScreen(
     onPaginationFinished: (Int?) -> Unit,
     onProgressChanged: (ReadingProgress) -> Unit,
     onNavigationHandled: () -> Unit,
-    getPaginator: (List<Chapter>, TextStyle, IntSize, TextMeasurer) -> LazyBookPaginator
+    getPaginator: (List<Chapter>, TextStyle, IntSize, TextMeasurer, Density) -> LazyBookPaginator
 ) {
     val textMeasurer = rememberTextMeasurer()
     val style = TextStyle(fontSize = settings.fontSize.sp, lineHeight = settings.lineHeight.sp)
@@ -268,9 +282,13 @@ fun BookScreen(
                 return@BoxWithConstraints
             }
 
+            val density = LocalDensity.current
+
             val paginator = remember(style, containerSize) {
-                getPaginator(chapters, style, containerSize, textMeasurer)
+                getPaginator(chapters, style, containerSize, textMeasurer, density)
             }
+
+            val inlineContent = paginator.getInlineContent()
 
             val outerPagerState = rememberPagerState(
                 initialPage = restoredProgress?.chapterId ?: 0,
@@ -313,6 +331,7 @@ fun BookScreen(
             ) { chapterIndex ->
                 ChapterPageContent(
                     chapterIndex = chapterIndex,
+                    inlineContent = inlineContent,
                     isActiveChapter = chapterIndex == outerPagerState.settledPage,
                     paginator = paginator,
                     style = style,
@@ -348,6 +367,14 @@ fun BookScreen(
                 globalPageIndex?.plus(1)?.toString() ?: "...",
                 totalPages?.toString() ?: "..."
             )
+
+            val selectedImage = paginator.selectedImage
+            if (selectedImage != null) {
+                ImageViewer(
+                    bitmap = selectedImage,
+                    onDismiss = paginator::clearSelectedImage
+                )
+            }
         }
 
         Text(
@@ -392,6 +419,7 @@ fun BookPager(
 private fun ChapterPageContent(
     modifier: Modifier = Modifier,
     chapterIndex: Int,
+    inlineContent: Map<String, InlineTextContent>,
     isActiveChapter: Boolean,
     paginator: LazyBookPaginator,
     style: TextStyle,
@@ -457,8 +485,56 @@ private fun ChapterPageContent(
         Text(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
             text = pages[pageIndex],
+            inlineContent = inlineContent,
             style = style,
             color = theme.text
         )
+    }
+}
+
+@Composable
+private fun ImageViewer(
+    modifier: Modifier = Modifier,
+    bitmap: ImageBitmap,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss
+    ) {
+        var scale by remember(bitmap) { mutableFloatStateOf(1f) }
+        var offset by remember(bitmap) { mutableStateOf(Offset.Zero) }
+
+        val transformState = rememberTransformableState { _, zoomChange, panChange, _ ->
+            scale = (scale * zoomChange).coerceIn(1f, 5f)
+            val panSpeed = scale.coerceAtLeast(1f)
+            offset += panChange * panSpeed
+        }
+        BoxWithConstraints(
+            modifier = modifier
+                .heightIn(500.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(alpha = 0.8f))
+                .clickable { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    }
+                    .transformable(transformState)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {},
+                contentScale = ContentScale.Fit
+            )
+        }
     }
 }
