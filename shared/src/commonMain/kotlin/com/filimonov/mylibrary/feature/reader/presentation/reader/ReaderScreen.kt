@@ -229,7 +229,7 @@ fun BookScreen(
     onPaginationFinished: (Int?) -> Unit,
     onProgressChanged: (ReadingProgress) -> Unit,
     onNavigationHandled: () -> Unit,
-    getPaginator: (List<Chapter>, TextStyle, IntSize, TextMeasurer) -> LazyBookPaginator
+    getPaginator: (List<Chapter>, TextStyle, IntSize, TextMeasurer, Density) -> LazyBookPaginator
 ) {
     val textMeasurer = rememberTextMeasurer()
     val style = TextStyle(fontSize = settings.fontSize.sp, lineHeight = settings.lineHeight.sp)
@@ -268,9 +268,13 @@ fun BookScreen(
                 return@BoxWithConstraints
             }
 
+            val density = LocalDensity.current
+
             val paginator = remember(style, containerSize) {
-                getPaginator(chapters, style, containerSize, textMeasurer)
+                getPaginator(chapters, style, containerSize, textMeasurer, density)
             }
+
+            val inlineContent = paginator.getInlineContent()
 
             val outerPagerState = rememberPagerState(
                 initialPage = restoredProgress?.chapterId ?: 0,
@@ -313,6 +317,7 @@ fun BookScreen(
             ) { chapterIndex ->
                 ChapterPageContent(
                     chapterIndex = chapterIndex,
+                    inlineContent = inlineContent,
                     isActiveChapter = chapterIndex == outerPagerState.settledPage,
                     paginator = paginator,
                     style = style,
@@ -392,6 +397,7 @@ fun BookPager(
 private fun ChapterPageContent(
     modifier: Modifier = Modifier,
     chapterIndex: Int,
+    inlineContent: Map<String, InlineTextContent>,
     isActiveChapter: Boolean,
     paginator: LazyBookPaginator,
     style: TextStyle,
@@ -457,6 +463,7 @@ private fun ChapterPageContent(
         Text(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
             text = pages[pageIndex],
+            inlineContent = inlineContent,
             style = style,
             color = theme.text
         )
