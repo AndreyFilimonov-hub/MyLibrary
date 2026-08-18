@@ -71,6 +71,9 @@ class LazyBookPaginator(
     var isFullyCounted = MutableStateFlow(false)
         private set
 
+    var selectedImage by mutableStateOf<ImageBitmap?>(null)
+        private set
+
     suspend fun countAllPagesInBackground() = coroutineScope {
         val semaphore = Semaphore(4)
         val jobs = chapters.indices.map { chapterIndex ->
@@ -517,6 +520,14 @@ class LazyBookPaginator(
         val targetHeightSp = with(density) { targetHeightPx.toSp() }
 
         return targetWidthSp to targetHeightSp
+    }
+
+    fun onImageClicked(bitmap: ImageBitmap) {
+        selectedImage = bitmap
+    }
+
+    fun clearSelectedImage() {
+        selectedImage = null
     }
 
     fun cancel() {
