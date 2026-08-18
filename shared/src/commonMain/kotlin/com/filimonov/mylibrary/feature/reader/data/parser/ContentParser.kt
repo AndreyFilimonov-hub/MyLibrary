@@ -13,50 +13,50 @@ import okio.Buffer
 
 class ContentParser {
 
-    suspend fun parseBookContent(bookPath: String): List<Chapter> {
-        return withContext(Dispatchers.IO) {
 
-            val file = PlatformFile(bookPath)
+    suspend fun parseBookContent(
+        bookPath: String
+    ): List<Chapter> = withContext(Dispatchers.IO) {
 
-            val buffer = Buffer()
-            buffer.write(file.readBytes())
+        val file = PlatformFile(bookPath)
 
-            val parsed = EpubReader().readEpub(buffer)
+        val buffer = Buffer().apply {
+            write(file.readBytes())
+        }
 
-            val chapters = mutableListOf<Chapter>()
+        val parsed = EpubReader().readEpub(buffer)
 
-            val spine = parsed.spine
-            val references = spine.getSpineReferences()
+        val resourcesMap = parsed.resources.resourceMap
 
-            val resourcesMap = parsed.resources.resourceMap
+        val references = parsed.spine.getSpineReferences()
 
-            for ((index, reference) in references.withIndex()) {
-                val resource = reference.resource
-                val html = resource?.data?.decodeToString() ?: continue
+        val chapters =
+            references.mapIndexedNotNull { index, reference ->
+
+                val resource = reference.resource ?: return@mapIndexedNotNull null
+
+                val html = resource.data?.decodeToString() ?: return@mapIndexedNotNull null
 
                 val doc = Ksoup.parse(html, Parser.xmlParser())
-                val bodyText = doc.body().text()
-
-                if (bodyText.isBlank()) continue
 
                 val title = doc.selectFirst("h1, h2, h3")
-                    ?.text()
-                    ?.trim()
-                    ?.takeIf { it.isNotBlank() }
+                        ?.text()
+                        ?.trim()
+                        ?.takeIf { it.isNotBlank() }
 
-                val images = mutableMapOf<String, ByteArray?>()
+                val images =
+                    buildMap<String, ByteArray> {
+                        doc.select("img[src]")
+                            .forEach { img ->
+                                val src = img.attr("src")
 
-                doc.select("img[src]").forEach { img ->
-                    val src = img.attr("src")
-
-                    val imageResource = resourcesMap[src]
-
-                    if (imageResource != null) {
-                        images[src] = imageResource.data
+                                resourcesMap[src]
+                                    ?.data
+                                    ?.let { bytes -> put(src, bytes) }
+                            }
                     }
-                }
 
-                chapters += Chapter(
+                Chapter(
                     id = index,
                     title = title,
                     content = html,
@@ -64,7 +64,6 @@ class ContentParser {
                 )
             }
 
-            chapters
-        }
+        chapters
     }
 }
