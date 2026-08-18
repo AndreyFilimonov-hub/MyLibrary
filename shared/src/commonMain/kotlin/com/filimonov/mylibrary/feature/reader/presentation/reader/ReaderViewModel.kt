@@ -2,6 +2,7 @@ package com.filimonov.mylibrary.feature.reader.presentation.reader
 
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -214,7 +215,8 @@ class ReaderViewModel(
         chapters: List<Chapter>,
         style: TextStyle,
         containerSize: IntSize,
-        textMeasurer: TextMeasurer
+        textMeasurer: TextMeasurer,
+        density: Density
     ): LazyBookPaginator {
         val current = paginator
         if (current != null && current.style == style && current.containerSize == containerSize) return current
@@ -225,7 +227,8 @@ class ReaderViewModel(
             chapters = chapters,
             style = style,
             containerSize = containerSize,
-            textMeasurer = textMeasurer
+            textMeasurer = textMeasurer,
+            density = density
         ).also { newPaginator ->
             paginator = newPaginator
         }
