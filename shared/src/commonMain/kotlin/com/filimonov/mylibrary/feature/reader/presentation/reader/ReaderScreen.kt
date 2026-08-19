@@ -36,6 +36,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -75,7 +77,12 @@ import com.filimonov.mylibrary.feature.reader.presentation.settings.ReaderSettin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import mylibrary.shared.generated.resources.Res
-import mylibrary.shared.generated.resources.*
+import mylibrary.shared.generated.resources.ok
+import mylibrary.shared.generated.resources.page_info
+import mylibrary.shared.generated.resources.page_info_template
+import mylibrary.shared.generated.resources.search
+import mylibrary.shared.generated.resources.settings
+import mylibrary.shared.generated.resources.wait_for_book_loading
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -318,8 +325,8 @@ fun BookScreen(
                 pendingTarget = nav
                 onNavigationHandled()
             }
-
-            val currentChapterPages = paginator.pagesFor(outerPagerState.settledPage)
+            val chapterPages by paginator.chapterPages.collectAsState()
+            val currentChapterPages = chapterPages[outerPagerState.settledPage]
             val isCurrentChapterLoading = currentChapterPages == null
 
             BookPager(
@@ -330,10 +337,9 @@ fun BookScreen(
                 readingMode = settings.readingMode
             ) { chapterIndex ->
                 ChapterPageContent(
-                    chapterIndex = chapterIndex,
+                    pages = chapterPages[chapterIndex],
                     inlineContent = inlineContent,
                     isActiveChapter = chapterIndex == outerPagerState.settledPage,
-                    paginator = paginator,
                     style = style,
                     theme = settings.theme,
                     readingMode = settings.readingMode,
@@ -418,10 +424,9 @@ fun BookPager(
 @Composable
 private fun ChapterPageContent(
     modifier: Modifier = Modifier,
-    chapterIndex: Int,
+    pages: List<AnnotatedString>?,
     inlineContent: Map<String, InlineTextContent>,
     isActiveChapter: Boolean,
-    paginator: LazyBookPaginator,
     style: TextStyle,
     theme: ReaderTheme,
     readingMode: ReadingMode,
@@ -432,9 +437,6 @@ private fun ChapterPageContent(
     onCurrentPageInChapterChanged: (pageIndex: Int) -> Unit,
     contentPadding: PaddingValues
 ) {
-    LaunchedEffect(chapterIndex, paginator) { paginator.ensurePaginated(chapterIndex) }
-    val pages = paginator.pagesFor(chapterIndex)
-
     if (pages == null) {
         LoadingIndicator()
         return
