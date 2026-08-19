@@ -22,6 +22,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -81,8 +82,8 @@ class ReaderViewModel(
             fontSizeRequestState
                 .filterNotNull()
                 .debounce(400)
-                .collect { newSize ->
-                    val current = (_state.value as? ReaderState.Success)?.settings ?: return@collect
+                .collectLatest { newSize ->
+                    val current = (_state.value as? ReaderState.Success)?.settings ?: return@collectLatest
                     val newSettings =
                         current.copy(fontSize = newSize, lineHeight = (newSize * 1.5f).toInt())
                     updateSettings(newSettings)
@@ -111,18 +112,16 @@ class ReaderViewModel(
     }
 
     fun processCommand(command: ReaderCommand) {
-        viewModelScope.launch {
-            when (command) {
-                is ReaderCommand.ChangeFontSize -> changeFontSize(command.fontSize)
-                ReaderCommand.ClearSearchQuery -> clearSearch()
-                is ReaderCommand.InputQuery -> onSearchQueryChanged(command.query)
-                is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page)
-                ReaderCommand.OnNavigationHandled -> onNavigationHandled()
-                is ReaderCommand.OnPaginationFinished -> onPaginationFinished(command.totalPages)
-                is ReaderCommand.SaveProgress -> onProgressChanged(command.progress)
-                is ReaderCommand.SelectSearchResult -> onSearchResultSelected(command.searchResult)
-                is ReaderCommand.UpdateReaderSettings -> updateSettings(command.settings)
-            }
+        when (command) {
+            is ReaderCommand.ChangeFontSize -> changeFontSize(command.fontSize)
+            ReaderCommand.ClearSearchQuery -> clearSearch()
+            is ReaderCommand.InputQuery -> onSearchQueryChanged(command.query)
+            is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page)
+            ReaderCommand.OnNavigationHandled -> onNavigationHandled()
+            is ReaderCommand.OnPaginationFinished -> onPaginationFinished(command.totalPages)
+            is ReaderCommand.SaveProgress -> onProgressChanged(command.progress)
+            is ReaderCommand.SelectSearchResult -> onSearchResultSelected(command.searchResult)
+            is ReaderCommand.UpdateReaderSettings -> updateSettings(command.settings)
         }
     }
 
@@ -199,8 +198,9 @@ class ReaderViewModel(
         }
     }
 
-    private fun changeFontSize(fontSize: Int) {
-        fontSizeRequestState.value = fontSize.coerceIn(12, 32)
+    private fun changeFontSize(delta: Int) {
+        fontSizeRequestState.value =
+            ((state.value as ReaderState.Success).settings.fontSize + delta).coerceIn(12, 32)
     }
 
     private fun reduce(reducer: (ReaderState.Success) -> ReaderState.Success) {
