@@ -23,6 +23,11 @@
     <string name="filter_favorite">Любимые</string>
     <string name="filter_read">Прочитанные</string>
 
+    <string name="delete">Удалить</string>
+    <string name="delete_book_question">Удалить книгу?</string>
+    <string name="delete_book">Удалить «%1$s» из библиотеки?</string>
+    <string name="cancel">Отмена</string>
+
     <!-- Reader -->
 
     <string name="search">Поиск</string>
