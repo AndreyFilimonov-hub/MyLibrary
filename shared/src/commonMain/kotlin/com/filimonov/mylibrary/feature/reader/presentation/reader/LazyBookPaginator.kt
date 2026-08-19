@@ -24,8 +24,10 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
@@ -218,8 +220,18 @@ class LazyBookPaginator(
         var imageCounter = 0
         val placeholders = mutableListOf<AnnotatedString.Range<Placeholder>>()
 
-        val blockTags = setOf("p", "div", "section", "blockquote", "li")
+        val blockTags = setOf("section", "blockquote", "li")
         val headerTags = setOf("h1", "h2", "h3", "h4", "h5", "h6")
+        val ignoredTags = setOf("script", "style", "head", "title", "meta", "link")
+
+        val paragraphStyle = ParagraphStyle(
+            textIndent = TextIndent(
+                firstLine = 24.sp
+            ),
+            lineHeight = style.lineHeight,
+            textAlign = TextAlign.Justify,
+            hyphens = Hyphens.Auto
+        )
 
         val raw = buildAnnotatedString {
             fun visit(node: Node) {
@@ -231,6 +243,8 @@ class LazyBookPaginator(
 
                     is Element -> {
                         val tag = node.tagName().lowercase()
+
+                        if (tag in ignoredTags) return
 
                         if (tag == "a" && node.attr("href").isBlank()) return
 
@@ -272,72 +286,148 @@ class LazyBookPaginator(
 
                                 placeholders.add(AnnotatedString.Range(placeholder, start, end))
 
-                                inlineContentMap[id] = InlineTextContent(
-                                    placeholder = placeholder
-                                ) {
-                                    Image(
-                                        modifier = Modifier.fillMaxSize()
-                                            .clickable {
-                                                onImageClicked(bitmap)
-                                            },
-                                        bitmap = bitmap,
-                                        contentDescription = node.attr("alt"),
-                                        contentScale = ContentScale.Fit
-                                    )
-                                }
+                                inlineContentMap[id] =
+                                    InlineTextContent(placeholder = placeholder) {
+                                        Image(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .clickable {
+                                                        onImageClicked(
+                                                            bitmap
+                                                        )
+                                                    },
+                                            bitmap = bitmap,
+                                            contentDescription =
+                                                node.attr("alt"),
+                                            contentScale =
+                                                ContentScale.Fit
+                                        )
+                                    }
                             }
                             return
                         }
 
-                        if (tag in setOf("script", "style", "head", "title", "meta", "link")) return
+                        val isImageDiv = tag == "div" && node.selectFirst("img, image") != null
+
+                        val isEmptyLine = tag == "p" && node.classNames().contains("empty-line")
+
+                        val hasNestedBlock =
+                            if (tag == "div") {
+                                node.children().any { child ->
+                                    val childTag = child.tagName().lowercase()
+                                    childTag in setOf(
+                                        "p",
+                                        "div",
+                                        "section",
+                                        "blockquote",
+                                        "li",
+                                        "img",
+                                        "image",
+                                        "h1",
+                                        "h2",
+                                        "h3",
+                                        "h4",
+                                        "h5",
+                                        "h6"
+                                    )
+                                }
+                            } else {
+                                false
+                            }
+
+                        val isSimpleDiv = tag == "div" && !isImageDiv && !hasNestedBlock
+
+                        val isParagraph = tag == "p" && !isEmptyLine || isSimpleDiv
+
+                        when {
+                            isImageDiv -> {
+                                if (length > 0) {
+                                    append("\n")
+                                }
+                            }
+
+                            tag in blockTags || tag in headerTags -> {
+                                if (length > 0) {
+                                    append("\n\n")
+                                }
+                            }
+
+                            tag == "br" -> {
+                                append("\n")
+                            }
+                        }
 
                         val start = length
 
-                        if (tag in blockTags || tag in headerTags) {
-                            if (length > 0) append("\n\n")
-                        } else if (tag == "br") {
-                            append("\n")
+                        node.childNodes.forEach {
+                            visit(it)
                         }
 
-                        node.childNodes.forEach { visit(it) }
-
-                        when (tag) {
-                            "b", "strong" -> addStyle(
-                                SpanStyle(fontWeight = FontWeight.Bold),
+                        when {
+                            isParagraph -> addStyle(
+                                paragraphStyle,
                                 start,
                                 length
                             )
 
-                            "i", "em", "cite" -> addStyle(
-                                SpanStyle(fontStyle = FontStyle.Italic),
-                                start,
-                                length
-                            )
 
-                            "u" -> addStyle(
-                                SpanStyle(textDecoration = TextDecoration.Underline),
-                                start,
-                                length
-                            )
+                            isImageDiv -> Unit
 
-                            "s", "strike", "del" -> addStyle(
-                                SpanStyle(textDecoration = TextDecoration.LineThrough),
-                                start,
-                                length
-                            )
-
-                            "sub" -> addStyle(
+                            tag == "b" || tag == "strong" -> addStyle(
                                 SpanStyle(
-                                    baselineShift = BaselineShift.Subscript,
-                                    fontSize = 12.sp
-                                ), start, length
+                                    fontWeight =
+                                        FontWeight.Bold
+                                ),
+                                start,
+                                length
                             )
 
-                            "sup" -> addStyle(
+                            tag == "i" || tag == "em" || tag == "cite" -> addStyle(
                                 SpanStyle(
-                                    baselineShift = BaselineShift.Superscript,
+                                    fontStyle =
+                                        FontStyle.Italic
+                                ),
+                                start,
+                                length
+                            )
+
+                            tag == "u" -> addStyle(
+                                SpanStyle(
+                                    textDecoration =
+                                        TextDecoration.Underline
+                                ),
+                                start,
+                                length
+                            )
+
+                            tag == "s" || tag == "strike" || tag == "del" -> addStyle(
+                                SpanStyle(
+                                    textDecoration =
+                                        TextDecoration.LineThrough
+                                ),
+                                start,
+                                length
+                            )
+
+                            tag == "sub" -> addStyle(
+                                SpanStyle(
+                                    baselineShift =
+                                        BaselineShift.Subscript,
                                     fontSize = 12.sp
-                                ), start, length
+                                ),
+                                start,
+                                length
+                            )
+
+                            tag == "sup" -> addStyle(
+                                SpanStyle(
+                                    baselineShift =
+                                        BaselineShift.Superscript,
+                                    fontSize = 12.sp
+                                ),
+                                start,
+                                length
                             )
                         }
 
@@ -352,10 +442,14 @@ class LazyBookPaginator(
                                 SpanStyle(
                                     fontSize = size,
                                     fontWeight = FontWeight.Bold
-                                ), start, length
+                                ),
+                                start,
+                                length
                             )
                             addStyle(
-                                ParagraphStyle(textAlign = TextAlign.Center),
+                                ParagraphStyle(
+                                    textAlign = TextAlign.Center
+                                ),
                                 start,
                                 length
                             )
@@ -365,14 +459,18 @@ class LazyBookPaginator(
                         if (inlineStyle.isNotBlank()) {
                             if (Regex("font-weight\\s*:\\s*bold").containsMatchIn(inlineStyle)) {
                                 addStyle(
-                                    SpanStyle(fontWeight = FontWeight.Bold),
+                                    SpanStyle(
+                                        fontWeight = FontWeight.Bold
+                                    ),
                                     start,
                                     length
                                 )
                             }
                             if (Regex("font-weight\\s*:\\s*italic").containsMatchIn(inlineStyle)) {
                                 addStyle(
-                                    SpanStyle(fontStyle = FontStyle.Italic),
+                                    SpanStyle(
+                                        fontStyle = FontStyle.Italic
+                                    ),
                                     start,
                                     length
                                 )
@@ -384,9 +482,7 @@ class LazyBookPaginator(
             document.body().childNodes.forEach { visit(it) }
         }
 
-        val startOffset =
-            raw.text.indexOfFirst { !it.isWhitespace() }
-                .coerceAtLeast(0)
+        val startOffset = raw.text.indexOfFirst { !it.isWhitespace() }.coerceAtLeast(0)
         val trimmed = raw.let { r ->
             val trimmedText = r.text.trim()
 
@@ -406,10 +502,7 @@ class LazyBookPaginator(
                 val newStart = range.start - startOffset
                 val newEnd = range.end - startOffset
 
-                if (
-                    newStart >= 0 &&
-                    newEnd <= trimmed.length
-                ) {
+                if (newStart >= 0 && newEnd <= trimmed.length) {
                     AnnotatedString.Range(
                         item = range.item,
                         start = newStart,
@@ -432,11 +525,7 @@ class LazyBookPaginator(
         containerSize: IntSize
     ): List<AnnotatedString> {
 
-        if (
-            text.text.isBlank() ||
-            containerSize.width <= 0 ||
-            containerSize.height <= 0
-        ) {
+        if (text.text.isBlank() || containerSize.width <= 0 || containerSize.height <= 0) {
             return emptyList()
         }
 
@@ -451,21 +540,20 @@ class LazyBookPaginator(
         val maxWindowSize = 50_000
 
         val safetyMarginPx = 16f
-        val availableBottom =
-            containerSize.height - safetyMarginPx
+
+        val availableBottom = (containerSize.height - safetyMarginPx).coerceAtLeast(1f)
 
         val maxImageHeightSp = with(density) {
-                availableBottom
-                    .coerceAtLeast(1f)
-                    .toSp()
-            }
+            availableBottom.toSp()
+        }
 
         while (startIndex < textLength) {
             var windowEnd = minOf(startIndex + windowSize, textLength)
 
-            placeholders.firstOrNull { it.start < windowEnd && it.end > windowEnd }
-                ?.let {
-                    windowEnd = it.end.coerceAtMost(textLength)
+            placeholders
+                .firstOrNull { it.start < windowEnd && it.end > windowEnd }
+                ?.let { placeholder ->
+                    windowEnd = placeholder.end.coerceAtMost(textLength)
                 }
 
             val windowText = text.subSequence(startIndex, windowEnd)
@@ -474,7 +562,6 @@ class LazyBookPaginator(
                 placeholders
                     .filter { it.start >= startIndex && it.end <= windowEnd }
                     .map { range ->
-
                         AnnotatedString.Range(
                             item = range.item,
                             start = range.start - startIndex,
@@ -483,45 +570,39 @@ class LazyBookPaginator(
                         )
                     }
 
-            val cappedPlaceholders =
-                windowPlaceholders.map { range ->
-                    if (
-                        range.item.height.value >
-                        maxImageHeightSp.value
-                    ) {
+            val cappedPlaceholders = windowPlaceholders.map { range ->
+                if (range.item.height.value > maxImageHeightSp.value) {
+                    val scale = maxImageHeightSp.value / range.item.height.value
 
-                        val scale = maxImageHeightSp.value / range.item.height.value
-
-                        AnnotatedString.Range(
-                            item = range.item.copy(
-                                width = (range.item.width.value * scale).sp,
-                                height = maxImageHeightSp
-                            ),
-                            start = range.start,
-                            end = range.end,
-                            tag = range.tag
-                        )
-                    } else {
-                        range
-                    }
-                }
-
-            val result =
-                textMeasurer.measure(
-                    text = windowText,
-                    style = style,
-                    placeholders = cappedPlaceholders,
-                    constraints = Constraints(
-                        maxWidth = containerSize.width
+                    AnnotatedString.Range(
+                        item = range.item.copy(
+                            width = (range.item.width.value * scale).sp,
+                            height = maxImageHeightSp
+                        ),
+                        start = range.start,
+                        end = range.end,
+                        tag = range.tag
                     )
+                } else {
+                    range
+                }
+            }
+
+            val result = textMeasurer.measure(
+                text = windowText,
+                style = style,
+                placeholders = cappedPlaceholders,
+                constraints = Constraints(
+                    maxWidth = containerSize.width
                 )
+            )
 
             var lastFittingLine = -1
 
             for (line in 0 until result.lineCount) {
-                val bottom = result.multiParagraph.getLineBottom(line)
+                val lineBottom = result.multiParagraph.getLineBottom(line)
 
-                if (bottom <= availableBottom) {
+                if (lineBottom <= availableBottom) {
                     lastFittingLine = line
                 } else {
                     break
@@ -529,10 +610,7 @@ class LazyBookPaginator(
             }
 
             if (lastFittingLine == result.lineCount - 1 && windowEnd < textLength) {
-                windowSize =
-                    (windowSize * 2)
-                        .coerceAtMost(maxWindowSize)
-
+                windowSize = (windowSize * 2).coerceAtMost(maxWindowSize)
                 continue
             }
 
@@ -578,28 +656,11 @@ class LazyBookPaginator(
                     }
                 }
 
-            val endsWithPlaceholder = placeholders.any {
-                it.end == safeEnd
-            }
-
-            if (!endsWithPlaceholder && safeEnd < textLength) {
-                var wordStart = safeEnd
-
-                while (wordStart > startIndex && !text.text[wordStart - 1].isWhitespace()) {
-                    wordStart--
-                }
-
-                if (wordStart > startIndex) {
-                    safeEnd = wordStart
-                }
-            }
-
             safeEnd = safeEnd.coerceIn(startIndex + 1, textLength)
 
             pages += text.subSequence(startIndex, safeEnd)
 
-            val consumed =
-                safeEnd - startIndex
+            val consumed = safeEnd - startIndex
 
             startIndex = safeEnd
 
