@@ -1,8 +1,13 @@
 package com.filimonov.mylibrary.feature.library.presentation
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,7 +32,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -37,19 +43,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
@@ -59,6 +69,7 @@ import com.filimonov.mylibrary.feature.library.presentation.utils.asString
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
+import kotlinx.coroutines.launch
 import mylibrary.shared.generated.resources.Res
 import mylibrary.shared.generated.resources.add_first_book
 import mylibrary.shared.generated.resources.book_already_added
@@ -76,6 +87,7 @@ import okio.Path.Companion.toPath
 import okio.SYSTEM
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun LibraryScreen(
@@ -178,6 +190,13 @@ private fun LibraryContent(
     onToggleRead: (Book) -> Unit,
     onToggleFavorite: (Book) -> Unit
 ) {
+    var bookToDelete by remember {
+        mutableStateOf<Book?>(null)
+    }
+    var openItemId by remember {
+        mutableStateOf<Long?>(null)
+    }
+
     Column(
         modifier = modifier
     ) {
@@ -199,9 +218,7 @@ private fun LibraryContent(
             }
         }
         if (books.isEmpty()) {
-            EmptyContent(
-                filter = selectedFilter
-            )
+            EmptyContent(filter = selectedFilter)
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -210,26 +227,53 @@ private fun LibraryContent(
                 contentPadding = PaddingValues(bottom = 108.dp),
                 verticalArrangement = Arrangement.spacedBy(AppDimension.md)
             ) {
-                items(books, key = { it.id }) { book ->
-                    SwipeToDeleteBookItem(
-                        modifier = Modifier
-                            .padding(horizontal = AppDimension.md),
-                        book = book,
-                        onClick = {
-                            onBookClick(book.id, book.title)
+                items(
+                    items = books,
+                    key = { it.id }
+                ) { book ->
+                    SwipeToDelete(
+                        isOpen = openItemId == book.id,
+                        onOpen = {
+                            openItemId = book.id
+                        },
+                        onClose = {
+                            if (openItemId == book.id) {
+                                openItemId = null
+                            }
                         },
                         onDelete = {
-                            onBookDelete(book.id)
-                        },
-                        onToggleRead = {
-                            onToggleRead(book)
-                        },
-                        onToggleFavorite = {
-                            onToggleFavorite(book)
+                            bookToDelete = book
                         }
-                    )
+                    ) {
+                        BookItem(
+                            book = book,
+                            onClick = {
+                                onBookClick(book.id, book.title)
+                            },
+                            onToggleRead = {
+                                onToggleRead(book)
+                            },
+                            onToggleFavorite = {
+                                onToggleFavorite(book)
+                            }
+                        )
+                    }
                 }
             }
+        }
+
+        bookToDelete?.let { book ->
+            DeleteDialog(
+                bookTitle = book.title,
+                onDismissRequest = {
+                    bookToDelete = null
+                    openItemId = null
+                },
+                onBookDelete = {
+                    onBookDelete(book.id)
+                    bookToDelete = null
+                }
+            )
         }
     }
 }
@@ -298,47 +342,108 @@ private fun TopAppBar(
 }
 
 @Composable
-private fun SwipeToDeleteBookItem(
+fun SwipeToDelete(
     modifier: Modifier = Modifier,
-    book: Book,
-    onClick: () -> Unit,
+    isOpen: Boolean,
+    onOpen: () -> Unit,
+    onClose: () -> Unit,
     onDelete: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    onToggleRead: () -> Unit
+    content: @Composable () -> Unit
 ) {
-    val state = rememberSwipeToDismissBoxState()
-    LaunchedEffect(state.currentValue) {
-        if (state.currentValue == SwipeToDismissBoxValue.EndToStart) {
-            onDelete()
-        }
+    val offsetX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+
+    val density = LocalDensity.current
+
+    val revealWidth = with(density) { 72.dp.toPx() }
+
+    LaunchedEffect(isOpen) {
+        offsetX.animateTo(
+            targetValue = if (isOpen) {
+                -revealWidth
+            } else {
+                0f
+            },
+            animationSpec = tween(200)
+        )
     }
 
-    SwipeToDismissBox(
-        modifier = modifier,
-        state = state,
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true,
-        backgroundContent = {
-            Box(
-                modifier = Modifier.fillMaxSize()
-                    .clip(RoundedCornerShape(AppDimension.md))
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.8f))
-                    .padding(horizontal = AppDimension.xxl),
-                contentAlignment = Alignment.CenterEnd
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(AppDimension.md))
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(horizontal = AppDimension.xxl)
+                .clip(RoundedCornerShape(AppDimension.md))
+                .background(
+                    MaterialTheme.colorScheme.error.copy(
+                        alpha = 0.8f
+                    )
+                ),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            IconButton(
+                modifier = Modifier.width(72.dp),
+                onClick = onDelete
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = null
+                    contentDescription = stringResource(Res.string.delete)
                 )
             }
         }
-    ) {
-        BookItem(
-            book = book,
-            onClick = onClick,
-            onToggleFavorite = onToggleFavorite,
-            onToggleRead = onToggleRead
-        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = AppDimension.xxl)
+                .offset {
+                    IntOffset(
+                        x = offsetX.value.roundToInt(),
+                        y = 0
+                    )
+                }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        scope.launch {
+                            offsetX.snapTo(
+                                (offsetX.value + delta)
+                                    .coerceIn(
+                                        -revealWidth,
+                                        0f
+                                    )
+                            )
+                        }
+                    },
+                    onDragStopped = {
+                        scope.launch {
+                            val target =
+                                if (offsetX.value < -revealWidth / 2f) {
+                                    -revealWidth
+                                } else {
+                                    0f
+                                }
+
+                            offsetX.animateTo(
+                                targetValue = target,
+                                animationSpec = tween(200)
+                            )
+
+                            if (target == -revealWidth) {
+                                onOpen()
+                            } else {
+                                onClose()
+                            }
+                        }
+                    }
+                )
+        ) {
+            content()
+        }
     }
 }
 
@@ -470,4 +575,39 @@ private fun BookStatus(
             )
         }
     }
+}
+
+@Composable
+private fun DeleteDialog(
+    modifier: Modifier = Modifier,
+    bookTitle: String,
+    onDismissRequest: () -> Unit,
+    onBookDelete: () -> Unit,
+) {
+    AlertDialog(
+        modifier = modifier,
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text(stringResource(Res.string.delete_book_question))
+        },
+        text = {
+            Text(
+                stringResource(Res.string.delete_book, bookTitle)
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onBookDelete
+            ) {
+                Text(stringResource(Res.string.delete))
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest
+            ) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
+    )
 }
