@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
@@ -73,6 +74,10 @@ import kotlinx.coroutines.launch
 import mylibrary.shared.generated.resources.Res
 import mylibrary.shared.generated.resources.add_first_book
 import mylibrary.shared.generated.resources.book_already_added
+import mylibrary.shared.generated.resources.cancel
+import mylibrary.shared.generated.resources.delete
+import mylibrary.shared.generated.resources.delete_book
+import mylibrary.shared.generated.resources.delete_book_question
 import mylibrary.shared.generated.resources.favorite_books_empty
 import mylibrary.shared.generated.resources.filter_all
 import mylibrary.shared.generated.resources.filter_favorite
@@ -570,7 +575,7 @@ private fun BookStatus(
             onClick = onToggleRead
         ) {
             Icon(
-                imageVector = if (book.isRead) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                imageVector = if (book.isRead) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.MenuBook,
                 contentDescription = null
             )
         }
