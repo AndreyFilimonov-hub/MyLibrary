@@ -43,6 +43,10 @@ import mylibrary.shared.generated.resources.Res
 import mylibrary.shared.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
+private const val FONTSIZE_MAX = 32
+private const val FONTSIZE_MIN = 12
+private const val STEP = 2
+
 @Composable
 fun ReaderSettingsPanel(
     modifier: Modifier = Modifier,
@@ -62,8 +66,9 @@ fun ReaderSettingsPanel(
             horizontalArrangement = Arrangement.spacedBy(AppDimension.lg)
         ) {
             OutlinedIconButton(
+                enabled = settings.fontSize != FONTSIZE_MIN,
                 onClick = {
-                    onChangeFontSize(settings.fontSize - 2)
+                    onChangeFontSize(-STEP)
                 }
             ) {
                 Icon(
@@ -78,8 +83,9 @@ fun ReaderSettingsPanel(
                 textAlign = TextAlign.Center
             )
             OutlinedIconButton(
+                enabled = settings.fontSize != FONTSIZE_MAX,
                 onClick = {
-                    onChangeFontSize(settings.fontSize + 2)
+                    onChangeFontSize(STEP)
                 }
             ) {
                 Icon(
@@ -94,7 +100,7 @@ fun ReaderSettingsPanel(
         Spacer(Modifier.height(AppDimension.xxl))
 
         Text(stringResource(Res.string.reading_mode), style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(AppDimension.sm))
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             ReadingMode.entries.forEachIndexed { index, mode ->
                 SegmentedButton(

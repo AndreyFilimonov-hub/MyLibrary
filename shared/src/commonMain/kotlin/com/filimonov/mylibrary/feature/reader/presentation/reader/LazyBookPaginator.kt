@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -44,7 +43,6 @@ import com.fleeksoft.ksoup.nodes.TextNode
 import com.fleeksoft.ksoup.parser.Parser
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -52,8 +50,12 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.ceil
 
 class LazyBookPaginator(
@@ -67,13 +69,18 @@ class LazyBookPaginator(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val taskExecutor = PriorityTaskExecutor()
 
-    private val chapterPages = mutableStateMapOf<Int, List<AnnotatedString>>()
-    private val inProgress = mutableMapOf<Int, Deferred<List<AnnotatedString>>>()
-    private val inlineContentMap = mutableStateMapOf<String, InlineTextContent>()
+    private val _chapterPages = MutableStateFlow<Map<Int, List<AnnotatedString>>>(emptyMap())
+    val chapterPages: StateFlow<Map<Int, List<AnnotatedString>>>
+        get() = _chapterPages.asStateFlow()
 
-    private val pageCounts = mutableStateMapOf<Int, Int>()
-    var isFullyCounted = MutableStateFlow(false)
-        private set
+    private val _pageCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
+
+    private val progressMutex = Mutex()
+    private val inProgress = mutableMapOf<Int, CompletableDeferred<List<AnnotatedString>>>()
+
+    private val inlineContentMap = mutableMapOf<String, InlineTextContent>()
+
+    val isFullyCounted = MutableStateFlow(false)
 
     var selectedImage by mutableStateOf<ImageBitmap?>(null)
         private set
@@ -81,27 +88,35 @@ class LazyBookPaginator(
     suspend fun countAllPagesInBackground() = coroutineScope {
         val jobs = chapters.indices.map { chapterIndex ->
             async {
-                if (chapterPages[chapterIndex] != null) {
-                    pageCounts[chapterIndex] = chapterPages[chapterIndex]!!.size
+                _chapterPages.value[chapterIndex]?.let { pages ->
+                    _pageCounts.update {
+                        it + (chapterIndex to pages.size)
+                    }
                     return@async
                 }
                 taskExecutor.execute(TaskPriority.BACKGROUND) {
-                    if (chapterPages[chapterIndex] != null) {
-                        pageCounts[chapterIndex] = chapterPages[chapterIndex]!!.size
+                    _chapterPages.value[chapterIndex]?.let { pages ->
+                        _pageCounts.update {
+                            it + (chapterIndex to pages.size)
+                        }
                         return@execute
                     }
                     val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
-                    val pages =
-                        paginateChapterGreedy(
-                            annotated,
-                            placeholders,
-                            textMeasurer,
-                            style,
-                            containerSize
-                        )
+                    val pages = paginateChapterGreedy(
+                        text = annotated,
+                        placeholders = placeholders,
+                        textMeasurer = textMeasurer,
+                        style = style,
+                        containerSize = containerSize
+                    )
 
-                    chapterPages[chapterIndex] = pages
-                    pageCounts[chapterIndex] = pages.size
+                    _chapterPages.update {
+                        it + (chapterIndex to pages)
+                    }
+
+                    _pageCounts.update {
+                        it + (chapterIndex to pages.size)
+                    }
                 }
             }
         }
@@ -109,75 +124,121 @@ class LazyBookPaginator(
         isFullyCounted.value = true
     }
 
-    fun pagesFor(chapterIndex: Int): List<AnnotatedString>? = chapterPages[chapterIndex]
-
-    fun getInlineContent(): Map<String, InlineTextContent> = inlineContentMap
-
-    fun ensurePaginated(chapterIndex: Int) {
-        if (chapterIndex !in chapters.indices || chapterIndex in chapterPages) return
-        scope.launch { ensurePaginatedAwait(chapterIndex) }
+    fun getInlineContent(): Map<String, InlineTextContent> {
+        return inlineContentMap.toMap()
     }
 
-    suspend fun ensurePaginatedAwait(chapterIndex: Int): List<AnnotatedString> {
-        return withContext(Dispatchers.Default) {
-            chapterPages[chapterIndex]?.let { return@withContext it }
-            inProgress[chapterIndex]?.let { return@withContext it.await() }
-
-            val deferred = CompletableDeferred<List<AnnotatedString>>()
-            inProgress[chapterIndex] = deferred
-
-            taskExecutor.execute(TaskPriority.HIGH) {
-                try {
-                    val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
-                    val pages = paginateChapterGreedy(
-                        annotated,
-                        placeholders,
-                        textMeasurer,
-                        style,
-                        containerSize
-                    )
-                    chapterPages[chapterIndex] = pages
-                    pageCounts[chapterIndex] = pages.size
-
-                    deferred.complete(pages)
-                } catch (e: Throwable) {
-                    deferred.completeExceptionally(e)
-                } finally {
-                    inProgress.remove(chapterIndex)
-                }
-            }
-
-            deferred.await()
+    fun ensurePaginated(chapterIndex: Int) {
+        if (chapterIndex !in chapters.indices) return
+        if (_chapterPages.value.containsKey(chapterIndex)) {
+            return
+        }
+        scope.launch {
+            ensurePaginatedAwait(chapterIndex)
         }
     }
 
+    suspend fun ensurePaginatedAwait(chapterIndex: Int): List<AnnotatedString> {
+        require(chapterIndex in chapters.indices)
+        _chapterPages.value[chapterIndex]?.let {
+            return it
+        }
+        val deferred = progressMutex.withLock {
+            _chapterPages.value[chapterIndex]?.let {
+                return@withLock CompletableDeferred(it)
+            }
+            inProgress[chapterIndex]?.let {
+                return@withLock it
+            }
+            CompletableDeferred<List<AnnotatedString>>().also {
+                inProgress[chapterIndex] = it
+            }
+        }
+
+        if (deferred.isCompleted) {
+            return deferred.await()
+        }
+
+        taskExecutor.execute(TaskPriority.HIGH) {
+            try {
+                _chapterPages.value[chapterIndex]?.let { pages ->
+                    deferred.complete(pages)
+                    return@execute
+                }
+                val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
+                val pages = paginateChapterGreedy(
+                    text = annotated,
+                    placeholders = placeholders,
+                    textMeasurer = textMeasurer,
+                    style = style,
+                    containerSize = containerSize
+                )
+
+                _chapterPages.update {
+                    it + (chapterIndex to pages)
+                }
+                _pageCounts.update {
+                    it + (chapterIndex to pages.size)
+                }
+
+                deferred.complete(pages)
+            } catch (e: Throwable) {
+                deferred.completeExceptionally(e)
+                throw e
+            } finally {
+                progressMutex.withLock {
+                    inProgress.remove(chapterIndex)
+                }
+            }
+        }
+
+        return deferred.await()
+    }
+
     fun globalPageIndex(chapterIndex: Int, pageInChapter: Int): Int? {
+        val counts = _pageCounts.value
+
         var acc = 0
         for (i in 0 until chapterIndex) {
-            acc += pageCounts[i] ?: return null
+            val count = counts[i] ?: return null
+            acc += count
         }
 
         return acc + pageInChapter
     }
 
     fun totalPages(): Int? {
-        if (!isFullyCounted.value) return null
-        return pageCounts.values.sum().coerceAtLeast(1)
+        if (!isFullyCounted.value) {
+            return null
+        }
+        return _pageCounts.value
+            .values
+            .sum()
+            .coerceAtLeast(1)
     }
 
     fun searchByQuery(query: String): List<SearchResult> {
         if (!isFullyCounted.value || query.isBlank()) return emptyList()
 
+        val pagesMap = _chapterPages.value
+
         val result = mutableListOf<SearchResult>()
 
         for (chapterIndex in chapters.indices) {
-            val pages = chapterPages[chapterIndex] ?: continue
-
+            val pages =
+                pagesMap[chapterIndex]
+                    ?: continue
             pages.forEachIndexed { pageIndex, page ->
                 val text = page.text
                 var from = 0
                 while (true) {
-                    val matchIndex = text.indexOf(query, from, true)
+                    val matchIndex =
+                        text.indexOf(
+                            query,
+                            from,
+                            ignoreCase = true
+                        )
+
                     if (matchIndex == -1) break
 
                     val snippetStart = (matchIndex - 30).coerceIn(0, text.length)
@@ -185,14 +246,17 @@ class LazyBookPaginator(
                         (matchIndex + query.length + 30).coerceIn(snippetStart, text.length)
                     val snippet = "...${text.substring(snippetStart, snippetEnd)}..."
 
-                    result.add(
-                        SearchResult(
-                            chapterIndex,
-                            pageIndex,
-                            globalPageIndex(chapterIndex, pageIndex) ?: 0,
-                            snippet
-                        )
+                    result += SearchResult(
+                        chapterIndex = chapterIndex,
+                        pageIndexInChapter = pageIndex,
+                        globalPageIndex =
+                            globalPageIndex(
+                                chapterIndex,
+                                pageIndex
+                            ) ?: 0,
+                        snippet = snippet
                     )
+
                     from = matchIndex + query.length
                 }
             }
@@ -202,11 +266,16 @@ class LazyBookPaginator(
     }
 
     fun resolveGlobalPage(globalPageIndex: Int): Pair<Int, Int>? {
-        if (!isFullyCounted.value) return null
+        if (!isFullyCounted.value) {
+            return null
+        }
+
+        val counts = _pageCounts.value
 
         var acc = 0
         for (chapterIndex in chapters.indices) {
-            val count = pageCounts[chapterIndex] ?: return null
+            val count = counts[chapterIndex] ?: return null
+
             if (globalPageIndex < acc + count) {
                 return chapterIndex to (globalPageIndex - acc)
             }
@@ -706,8 +775,14 @@ class LazyBookPaginator(
     fun cancel() {
         scope.cancel()
         taskExecutor.cancel()
-        chapterPages.clear()
-        pageCounts.clear()
-        inProgress.clear()
+        _chapterPages.value = emptyMap()
+        _pageCounts.value = emptyMap()
+        scope.launch {
+            progressMutex.withLock {
+                inProgress.clear()
+            }
+        }
+        inlineContentMap.clear()
+        selectedImage = null
     }
 }
