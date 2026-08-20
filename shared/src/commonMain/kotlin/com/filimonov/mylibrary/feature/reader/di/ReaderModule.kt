@@ -1,6 +1,8 @@
 package com.filimonov.mylibrary.feature.reader.di
 
 import com.filimonov.mylibrary.feature.reader.data.parser.ContentParser
+import com.filimonov.mylibrary.feature.reader.data.parser.EpubContentParser
+import com.filimonov.mylibrary.feature.reader.data.parser.Fb2ContentParser
 import com.filimonov.mylibrary.feature.reader.data.repository.ReaderRepositoryImpl
 import com.filimonov.mylibrary.feature.reader.domain.repository.ReaderRepository
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookContentByIdUseCase
@@ -55,6 +57,17 @@ val readerModule = module {
     }
 
     single<ContentParser> {
-        ContentParser()
+        ContentParser(
+            epubContentParser = get(),
+            fb2ContentParser = get()
+        )
+    }
+
+    single<EpubContentParser> {
+        EpubContentParser()
+    }
+
+    single<Fb2ContentParser> {
+        Fb2ContentParser()
     }
 }
