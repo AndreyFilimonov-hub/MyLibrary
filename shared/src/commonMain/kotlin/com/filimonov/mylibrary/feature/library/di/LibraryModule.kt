@@ -9,6 +9,7 @@ import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.DeleteBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.GetBooksUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.UpdateBookUseCase
+import com.filimonov.mylibrary.feature.library.presentation.CoverImageCache
 import com.filimonov.mylibrary.feature.library.presentation.LibraryViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -40,11 +41,16 @@ val libraryModule = module {
 
     viewModel {
         LibraryViewModel(
-            get(),
-            get(),
-            get(),
-            get()
+            getBooksUseCase = get(),
+            addBookUseCase = get(),
+            deleteBookUseCase = get(),
+            updateBookUseCase = get(),
+            coverImageCache = get()
         )
+    }
+
+    single<CoverImageCache> {
+        CoverImageCache()
     }
 
     single<BookParser> {

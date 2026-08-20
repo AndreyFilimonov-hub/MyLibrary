@@ -9,6 +9,7 @@ sealed interface LibraryState {
     data class Success(
         val books: List<Book>,
         val filteredBooks: List<Book>,
-        val filter: LibraryFilter
+        val filter: LibraryFilter,
+        val isBookUpload: Boolean = false
     ) : LibraryState
 }
