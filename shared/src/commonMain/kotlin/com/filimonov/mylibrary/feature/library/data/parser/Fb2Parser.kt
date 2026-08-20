@@ -85,6 +85,7 @@ class Fb2Parser(
 
             val bookPath = bookStorage.saveBook(
                 bytes,
+                BookFormat.FB2,
                 Uuid.random().toString()
             )
 
