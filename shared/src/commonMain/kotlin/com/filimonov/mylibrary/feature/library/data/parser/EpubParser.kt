@@ -35,6 +35,7 @@ class EpubParser(
                 }
             val bookPath = bookStorage.saveBook(
                 bytes,
+                BookFormat.EPUB,
                 Uuid.random().toString()
             )
 
