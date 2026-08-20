@@ -9,7 +9,7 @@ interface BookRepository {
 
     fun observeBooks(): Flow<List<Book>>
 
-    suspend fun addBook(bookPath: String): MyResult<Unit, LibraryError>
+    suspend fun addBook(bookPath: String): MyResult<Book, LibraryError>
 
     suspend fun deleteBook(id: Long)
 
