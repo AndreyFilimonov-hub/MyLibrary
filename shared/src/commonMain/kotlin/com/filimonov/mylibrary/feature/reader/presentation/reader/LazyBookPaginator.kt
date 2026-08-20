@@ -441,7 +441,11 @@ class LazyBookPaginator(
                             )
 
 
-                            isImageDiv -> Unit
+                            isImageDiv -> addStyle(
+                                ParagraphStyle(textAlign = TextAlign.Center),
+                                start,
+                                length
+                            )
 
                             tag == "b" || tag == "strong" -> addStyle(
                                 SpanStyle(
