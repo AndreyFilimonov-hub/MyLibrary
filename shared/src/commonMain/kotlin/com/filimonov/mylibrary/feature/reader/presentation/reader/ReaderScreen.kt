@@ -122,6 +122,7 @@ fun ReaderScreen(
                             title = {
                                 Text(
                                     text = bookTitle,
+                                    color = currentState.settings.theme.text,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 2,
