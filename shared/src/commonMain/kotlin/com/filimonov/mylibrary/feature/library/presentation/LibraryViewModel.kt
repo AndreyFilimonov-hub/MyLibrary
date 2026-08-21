@@ -3,6 +3,7 @@ package com.filimonov.mylibrary.feature.library.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.filimonov.mylibrary.core.result.onFailure
+import com.filimonov.mylibrary.core.result.onSuccess
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
@@ -22,7 +23,8 @@ class LibraryViewModel(
     private val getBooksUseCase: GetBooksUseCase,
     private val addBookUseCase: AddBookUseCase,
     private val deleteBookUseCase: DeleteBookUseCase,
-    private val updateBookUseCase: UpdateBookUseCase
+    private val updateBookUseCase: UpdateBookUseCase,
+    private val coverImageCache: CoverImageCache
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<LibraryState>(LibraryState.Loading)
@@ -57,7 +59,15 @@ class LibraryViewModel(
         viewModelScope.launch {
             when (command) {
                 is LibraryCommand.AddBook -> {
-                    addBookUseCase(command.bookPath)
+                    _state.update { previousState ->
+                        if (previousState is LibraryState.Success) {
+                            previousState.copy(isBookUpload = true)
+                        } else previousState
+                    }
+                    addBookUseCase(command.path)
+                        .onSuccess { book ->
+                            coverImageCache.load(book.coverPath)
+                        }
                         .onFailure { libraryError ->
                             when (libraryError) {
                                 LibraryError.BookAlreadyExists -> _event.emit(
@@ -79,9 +89,17 @@ class LibraryViewModel(
                                 )
                             }
                         }
+                    _state.update { previousState ->
+                        if (previousState is LibraryState.Success) {
+                            previousState.copy(isBookUpload = false)
+                        } else previousState
+                    }
                 }
 
-                is LibraryCommand.DeleteBook -> deleteBookUseCase(command.id)
+                is LibraryCommand.DeleteBook -> {
+                    deleteBookUseCase(command.book.id)
+                    coverImageCache.remove(command.book.coverPath)
+                }
                 is LibraryCommand.SelectFilter -> _state.update { previousState ->
                     if (previousState is LibraryState.Success) {
                         val filteredBooks = filterBooks(previousState.books, command.filter)
@@ -115,5 +133,9 @@ class LibraryViewModel(
             LibraryFilter.FAVORITE -> books.filter { it.isFavorite }
             LibraryFilter.READ -> books.filter { it.isRead }
         }
+    }
+
+    override fun onCleared() {
+        coverImageCache.clear()
     }
 }
