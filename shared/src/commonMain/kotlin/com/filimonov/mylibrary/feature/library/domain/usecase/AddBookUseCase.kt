@@ -9,7 +9,7 @@ class AddBookUseCase(
     private val repository: BookRepository
 ) {
 
-    suspend operator fun invoke(bookPath: String): MyResult<Book, LibraryError> {
+    suspend operator fun invoke(bookPath: String): MyResult<Unit, LibraryError> {
         return repository.addBook(bookPath)
     }
 }
