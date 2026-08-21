@@ -67,6 +67,7 @@ class LibraryViewModel(
                     addBookUseCase(command.path)
                         .onSuccess { book ->
                             coverImageCache.load(book.coverPath)
+                            _event.emit(LibraryEvent.BookAdded)
                         }
                         .onFailure { libraryError ->
                             when (libraryError) {
