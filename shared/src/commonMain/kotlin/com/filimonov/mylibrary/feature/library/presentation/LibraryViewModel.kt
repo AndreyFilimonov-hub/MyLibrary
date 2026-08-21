@@ -23,8 +23,7 @@ class LibraryViewModel(
     private val getBooksUseCase: GetBooksUseCase,
     private val addBookUseCase: AddBookUseCase,
     private val deleteBookUseCase: DeleteBookUseCase,
-    private val updateBookUseCase: UpdateBookUseCase,
-    private val coverImageCache: CoverImageCache
+    private val updateBookUseCase: UpdateBookUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<LibraryState>(LibraryState.Loading)
@@ -65,8 +64,8 @@ class LibraryViewModel(
                         } else previousState
                     }
                     addBookUseCase(command.path)
-                        .onSuccess { book ->
-                            coverImageCache.load(book.coverPath)
+                        .onSuccess {
+                            _event.emit(LibraryEvent.BookAdded)
                         }
                         .onFailure { libraryError ->
                             when (libraryError) {
@@ -98,8 +97,8 @@ class LibraryViewModel(
 
                 is LibraryCommand.DeleteBook -> {
                     deleteBookUseCase(command.book.id)
-                    coverImageCache.remove(command.book.coverPath)
                 }
+
                 is LibraryCommand.SelectFilter -> _state.update { previousState ->
                     if (previousState is LibraryState.Success) {
                         val filteredBooks = filterBooks(previousState.books, command.filter)
@@ -133,9 +132,5 @@ class LibraryViewModel(
             LibraryFilter.FAVORITE -> books.filter { it.isFavorite }
             LibraryFilter.READ -> books.filter { it.isRead }
         }
-    }
-
-    override fun onCleared() {
-        coverImageCache.clear()
     }
 }

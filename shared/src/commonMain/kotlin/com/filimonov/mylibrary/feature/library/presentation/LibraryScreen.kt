@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,6 +72,7 @@ import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import com.filimonov.mylibrary.feature.library.presentation.utils.asString
+import dev.scarlet.logger.Logger
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
@@ -94,6 +96,7 @@ import mylibrary.shared.generated.resources.unknown_error
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
+import coil3.compose.AsyncImage
 
 @Composable
 fun LibraryScreen(
@@ -110,8 +113,6 @@ fun LibraryScreen(
             viewModel.processCommand(LibraryCommand.AddBook(file.path))
         }
     }
-
-    val coverImageCache = remember { CoverImageCache() }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -140,6 +141,9 @@ fun LibraryScreen(
         val invalidEpubException = stringResource(Res.string.invalid_epub_exception)
         val unknownError = stringResource(Res.string.unknown_error)
         val ok = stringResource(Res.string.ok)
+
+        val listState = rememberLazyListState()
+
         LaunchedEffect(Unit) {
             viewModel.event.collect { event ->
                 when (event) {
@@ -153,6 +157,8 @@ fun LibraryScreen(
                             actionLabel = ok
                         )
                     }
+
+                    LibraryEvent.BookAdded -> listState.animateScrollToItem(0)
                 }
             }
         }
@@ -171,7 +177,7 @@ fun LibraryScreen(
                             .padding(top = innerPadding.calculateTopPadding()),
                         books = currentState.filteredBooks,
                         selectedFilter = currentState.filter,
-                        coverImageCache = coverImageCache,
+                        listState = listState,
                         onFilterChipClick = { filter ->
                             viewModel.processCommand(LibraryCommand.SelectFilter(filter))
                         },
@@ -215,7 +221,7 @@ private fun LibraryContent(
     modifier: Modifier = Modifier,
     books: List<Book>,
     selectedFilter: LibraryFilter,
-    coverImageCache: CoverImageCache,
+    listState: LazyListState,
     onFilterChipClick: (LibraryFilter) -> Unit,
     onBookClick: (Long, String) -> Unit,
     onBookDelete: (Book) -> Unit,
@@ -227,14 +233,6 @@ private fun LibraryContent(
     }
     var openItemId by remember {
         mutableStateOf<Long?>(null)
-    }
-
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(books.size) {
-        if (books.isNotEmpty()) {
-            listState.animateScrollToItem(0)
-        }
     }
 
     Column(
@@ -289,7 +287,6 @@ private fun LibraryContent(
                     {
                         BookItem(
                             book = book,
-                            coverImageCache = coverImageCache,
                             onClick = {
                                 onBookClick(book.id, book.title)
                             },
@@ -494,7 +491,6 @@ fun SwipeToDelete(
 private fun BookItem(
     modifier: Modifier = Modifier,
     book: Book,
-    coverImageCache: CoverImageCache,
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     onToggleRead: () -> Unit
@@ -509,8 +505,7 @@ private fun BookItem(
                 .height(IntrinsicSize.Min)
         ) {
             BookCover(
-                coverPath = book.coverPath,
-                coverImageCache = coverImageCache
+                coverPath = book.coverPath
             )
 
             Spacer(modifier = Modifier.width(AppDimension.md))
@@ -528,20 +523,8 @@ private fun BookItem(
 @Composable
 private fun BookCover(
     modifier: Modifier = Modifier,
-    coverPath: String?,
-    coverImageCache: CoverImageCache
+    coverPath: String?
 ) {
-    var bitmap by remember {
-        mutableStateOf<ImageBitmap?>(null)
-    }
-    LaunchedEffect(coverPath) {
-        if (coverPath == null) {
-            bitmap = null
-            return@LaunchedEffect
-        }
-
-        bitmap = coverImageCache.load(coverPath)
-    }
     Surface(
         modifier = modifier.size(
             width = 64.dp,
@@ -550,12 +533,10 @@ private fun BookCover(
         shape = RoundedCornerShape(AppDimension.sm),
         tonalElevation = 2.dp
     ) {
-        val image = bitmap
-
-        if (image != null) {
-            Image(
+        if (coverPath != null) {
+            AsyncImage(
                 modifier = Modifier.fillMaxSize(),
-                bitmap = image,
+                model = "file://$coverPath",
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )
