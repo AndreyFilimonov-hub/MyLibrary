@@ -104,7 +104,7 @@ fun LibraryScreen(
     val state = viewModel.state.collectAsStateWithLifecycle()
 
     val picker = rememberFilePickerLauncher(
-        type = FileKitType.File("epub", "bin")
+        type = FileKitType.File("epub", "bin", "pdf")
     ) { file ->
         if (file != null) {
             viewModel.processCommand(LibraryCommand.AddBook(file.path))

@@ -1,5 +1,5 @@
 package com.filimonov.mylibrary.feature.library.data.parser
 
 enum class BookFormat {
-    EPUB, FB2
+    EPUB, FB2, PDF
 }
