@@ -2,12 +2,15 @@ package com.filimonov.mylibrary.feature.reader.presentation.reader
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.decodeToImageBitmap
@@ -315,20 +318,28 @@ class LazyBookPaginator(
 
                         if (tag in ignoredTags) return
 
-                        if (tag == "a" && node.attr("href").isBlank()) return
+                        if (tag == "a") {
+                            val hasAnyHref = node.attr("href").isNotBlank() ||
+                                    node.attr("l:href").isNotBlank() ||
+                                    node.attr("xlink:href").isNotBlank()
+                            if (!hasAnyHref) return
+                        }
 
                         if (tag == "img" || tag == "image") {
-                            val src = node.attr("src").ifBlank { node.attr("xlink:href") }
+                            val src = node.attr("src")
+                                .ifBlank { node.attr("xlink:href") }
+                                .ifBlank { node.attr("l:href") }
+                                .removePrefix("#")
                             val bytes = if (src.isNotBlank()) chapter.images?.get(src) else null
 
                             val bitmap = bytes?.decodeToImageBitmap()
 
                             if (bitmap != null) {
                                 val id = "chapter_${chapter.id}_img_${imageCounter++}"
-                                val (widthSp, heightSp) = calculatePlaceholderSize(bitmap)
+                                val (_, heightSp) = calculatePlaceholderSize(bitmap)
 
                                 val placeholder = Placeholder(
-                                    width = widthSp,
+                                    width = with(density) { containerSize.width.toSp() },
                                     height = heightSp,
                                     placeholderVerticalAlign = PlaceholderVerticalAlign.Top
                                 )
@@ -357,21 +368,24 @@ class LazyBookPaginator(
 
                                 inlineContentMap[id] =
                                     InlineTextContent(placeholder = placeholder) {
-                                        Image(
-                                            modifier =
-                                                Modifier
-                                                    .fillMaxSize()
-                                                    .clickable {
-                                                        onImageClicked(
-                                                            bitmap
-                                                        )
-                                                    },
-                                            bitmap = bitmap,
-                                            contentDescription =
-                                                node.attr("alt"),
-                                            contentScale =
-                                                ContentScale.Fit
-                                        )
+                                        inlineContentMap[id] =
+                                            InlineTextContent(placeholder = placeholder) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Image(
+                                                        modifier = Modifier
+                                                            .wrapContentSize()
+                                                            .clickable {
+                                                                onImageClicked(bitmap)
+                                                            },
+                                                        bitmap = bitmap,
+                                                        contentDescription = node.attr("alt"),
+                                                        contentScale = ContentScale.Fit
+                                                    )
+                                                }
+                                            }
                                     }
                             }
                             return
@@ -407,7 +421,10 @@ class LazyBookPaginator(
 
                         val isSimpleDiv = tag == "div" && !isImageDiv && !hasNestedBlock
 
-                        val isParagraph = tag == "p" && !isEmptyLine || isSimpleDiv
+                        val isImageParagraph =
+                            tag == "p" && node.selectFirst("img, image") != null
+
+                        val isParagraph = (tag == "p" && !isEmptyLine && !isImageParagraph) || isSimpleDiv
 
                         when {
                             isImageDiv -> {
@@ -441,11 +458,7 @@ class LazyBookPaginator(
                             )
 
 
-                            isImageDiv -> addStyle(
-                                ParagraphStyle(textAlign = TextAlign.Center),
-                                start,
-                                length
-                            )
+                            isImageDiv -> Unit
 
                             tag == "b" || tag == "strong" -> addStyle(
                                 SpanStyle(

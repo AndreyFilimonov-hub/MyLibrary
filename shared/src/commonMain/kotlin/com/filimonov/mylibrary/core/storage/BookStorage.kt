@@ -1,5 +1,6 @@
 package com.filimonov.mylibrary.core.storage
 
+import com.filimonov.mylibrary.feature.library.data.parser.BookFormat
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.filesDir
@@ -18,11 +19,17 @@ class BookStorage {
 
     suspend fun saveBook(
         bytes: ByteArray,
+        bookFormat: BookFormat,
         fileName: String
     ): String {
+        val extension = when(bookFormat) {
+            BookFormat.EPUB -> "epub"
+            BookFormat.FB2 -> "fb2"
+        }
+
         val file = PlatformFile(
             FileKit.filesDir,
-            "books/$fileName.epub"
+            "books/$fileName.$extension"
         )
 
         file.write(bytes)
