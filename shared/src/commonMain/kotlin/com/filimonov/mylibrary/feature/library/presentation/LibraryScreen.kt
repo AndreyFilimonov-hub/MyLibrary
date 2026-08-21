@@ -2,7 +2,6 @@ package com.filimonov.mylibrary.feature.library.presentation
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -61,18 +60,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import com.filimonov.mylibrary.feature.library.presentation.utils.asString
-import dev.scarlet.logger.Logger
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
@@ -96,7 +94,6 @@ import mylibrary.shared.generated.resources.unknown_error
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
-import coil3.compose.AsyncImage
 
 @Composable
 fun LibraryScreen(
