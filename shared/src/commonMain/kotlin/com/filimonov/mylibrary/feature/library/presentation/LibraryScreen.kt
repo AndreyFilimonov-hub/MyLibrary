@@ -24,7 +24,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -57,7 +60,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.decodeToImageBitmap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -67,6 +72,7 @@ import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import com.filimonov.mylibrary.feature.library.presentation.utils.asString
+import dev.scarlet.logger.Logger
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
@@ -87,12 +93,10 @@ import mylibrary.shared.generated.resources.library_title
 import mylibrary.shared.generated.resources.ok
 import mylibrary.shared.generated.resources.read_books_empty
 import mylibrary.shared.generated.resources.unknown_error
-import okio.FileSystem
-import okio.Path.Companion.toPath
-import okio.SYSTEM
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
+import coil3.compose.AsyncImage
 
 @Composable
 fun LibraryScreen(
@@ -103,7 +107,7 @@ fun LibraryScreen(
     val state = viewModel.state.collectAsStateWithLifecycle()
 
     val picker = rememberFilePickerLauncher(
-        type = FileKitType.File("epub")
+        type = FileKitType.File("epub", "bin")
     ) { file ->
         if (file != null) {
             viewModel.processCommand(LibraryCommand.AddBook(file.path))
@@ -137,6 +141,9 @@ fun LibraryScreen(
         val invalidEpubException = stringResource(Res.string.invalid_epub_exception)
         val unknownError = stringResource(Res.string.unknown_error)
         val ok = stringResource(Res.string.ok)
+
+        val listState = rememberLazyListState()
+
         LaunchedEffect(Unit) {
             viewModel.event.collect { event ->
                 when (event) {
@@ -150,6 +157,8 @@ fun LibraryScreen(
                             actionLabel = ok
                         )
                     }
+
+                    LibraryEvent.BookAdded -> listState.animateScrollToItem(0)
                 }
             }
         }
@@ -160,25 +169,48 @@ fun LibraryScreen(
             }
 
             is LibraryState.Success -> {
-                LibraryContent(
+                Box(
                     modifier = Modifier.fillMaxSize()
-                        .padding(top = innerPadding.calculateTopPadding()),
-                    books = currentState.filteredBooks,
-                    selectedFilter = currentState.filter,
-                    onFilterChipClick = { filter ->
-                        viewModel.processCommand(LibraryCommand.SelectFilter(filter))
-                    },
-                    onBookClick = onBookClick,
-                    onBookDelete = { bookId ->
-                        viewModel.processCommand(LibraryCommand.DeleteBook(bookId))
-                    },
-                    onToggleRead = { book ->
-                        viewModel.processCommand(LibraryCommand.ToggleRead(book))
-                    },
-                    onToggleFavorite = { book ->
-                        viewModel.processCommand(LibraryCommand.ToggleFavorite(book))
+                ) {
+                    LibraryContent(
+                        modifier = Modifier.fillMaxSize()
+                            .padding(top = innerPadding.calculateTopPadding()),
+                        books = currentState.filteredBooks,
+                        selectedFilter = currentState.filter,
+                        listState = listState,
+                        onFilterChipClick = { filter ->
+                            viewModel.processCommand(LibraryCommand.SelectFilter(filter))
+                        },
+                        onBookClick = onBookClick,
+                        onBookDelete = { bookId ->
+                            viewModel.processCommand(LibraryCommand.DeleteBook(bookId))
+                        },
+                        onToggleRead = { book ->
+                            viewModel.processCommand(LibraryCommand.ToggleRead(book))
+                        },
+                        onToggleFavorite = { book ->
+                            viewModel.processCommand(LibraryCommand.ToggleFavorite(book))
+                        }
+                    )
+                    if (currentState.isBookUpload) {
+                        Box(
+                            modifier = Modifier.fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.8f))
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            awaitPointerEvent()
+                                                .changes
+                                                .forEach { it.consume() }
+                                        }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
-                )
+                }
             }
         }
     }
@@ -189,9 +221,10 @@ private fun LibraryContent(
     modifier: Modifier = Modifier,
     books: List<Book>,
     selectedFilter: LibraryFilter,
+    listState: LazyListState,
     onFilterChipClick: (LibraryFilter) -> Unit,
     onBookClick: (Long, String) -> Unit,
-    onBookDelete: (Long) -> Unit,
+    onBookDelete: (Book) -> Unit,
     onToggleRead: (Book) -> Unit,
     onToggleFavorite: (Book) -> Unit
 ) {
@@ -230,7 +263,8 @@ private fun LibraryContent(
                     .weight(1f)
                     .padding(top = AppDimension.md),
                 contentPadding = PaddingValues(bottom = 108.dp),
-                verticalArrangement = Arrangement.spacedBy(AppDimension.md)
+                verticalArrangement = Arrangement.spacedBy(AppDimension.md),
+                state = listState
             ) {
                 items(
                     items = books,
@@ -249,7 +283,8 @@ private fun LibraryContent(
                         onDelete = {
                             bookToDelete = book
                         }
-                    ) {
+                    )
+                    {
                         BookItem(
                             book = book,
                             onClick = {
@@ -275,7 +310,7 @@ private fun LibraryContent(
                     openItemId = null
                 },
                 onBookDelete = {
-                    onBookDelete(book.id)
+                    onBookDelete(book)
                     bookToDelete = null
                 }
             )
@@ -499,15 +534,9 @@ private fun BookCover(
         tonalElevation = 2.dp
     ) {
         if (coverPath != null) {
-            val bytes = FileSystem.SYSTEM.read(coverPath.toPath()) {
-                readByteArray()
-            }
-
-            val imageBitmap = bytes.decodeToImageBitmap()
-
-            Image(
+            AsyncImage(
                 modifier = Modifier.fillMaxSize(),
-                bitmap = imageBitmap,
+                model = "file://$coverPath",
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )

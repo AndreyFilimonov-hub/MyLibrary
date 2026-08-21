@@ -4,10 +4,7 @@ import com.filimonov.mylibrary.core.storage.BookStorage
 import com.filimonov.mylibrary.core.storage.CoverStorage
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import io.documentnode.epub4kmp.epub.EpubReader
-import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
@@ -20,14 +17,11 @@ class EpubParser(
 ) {
 
     @OptIn(ExperimentalUuidApi::class)
-    suspend fun parseBook(path: String): Book {
-        return withContext(Dispatchers.IO) {
-            val file = PlatformFile(path)
+    suspend fun parseBook(bytes: ByteArray): Book {
+        val buffer = Buffer()
+        buffer.write(bytes)
 
-            val buffer = Buffer()
-            val bytes = file.readBytes()
-            buffer.write(bytes)
-
+        return withContext(Dispatchers.Default) {
             val parsedBook = EpubReader().readEpub(buffer)
 
             val hash = bytes.toByteString().sha256().hex()
@@ -41,6 +35,7 @@ class EpubParser(
                 }
             val bookPath = bookStorage.saveBook(
                 bytes,
+                BookFormat.EPUB,
                 Uuid.random().toString()
             )
 

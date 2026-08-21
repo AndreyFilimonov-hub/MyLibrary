@@ -3,6 +3,7 @@ package com.filimonov.mylibrary.feature.library.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.filimonov.mylibrary.core.result.onFailure
+import com.filimonov.mylibrary.core.result.onSuccess
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
@@ -57,7 +58,15 @@ class LibraryViewModel(
         viewModelScope.launch {
             when (command) {
                 is LibraryCommand.AddBook -> {
-                    addBookUseCase(command.bookPath)
+                    _state.update { previousState ->
+                        if (previousState is LibraryState.Success) {
+                            previousState.copy(isBookUpload = true)
+                        } else previousState
+                    }
+                    addBookUseCase(command.path)
+                        .onSuccess {
+                            _event.emit(LibraryEvent.BookAdded)
+                        }
                         .onFailure { libraryError ->
                             when (libraryError) {
                                 LibraryError.BookAlreadyExists -> _event.emit(
@@ -79,9 +88,17 @@ class LibraryViewModel(
                                 )
                             }
                         }
+                    _state.update { previousState ->
+                        if (previousState is LibraryState.Success) {
+                            previousState.copy(isBookUpload = false)
+                        } else previousState
+                    }
                 }
 
-                is LibraryCommand.DeleteBook -> deleteBookUseCase(command.id)
+                is LibraryCommand.DeleteBook -> {
+                    deleteBookUseCase(command.book.id)
+                }
+
                 is LibraryCommand.SelectFilter -> _state.update { previousState ->
                     if (previousState is LibraryState.Success) {
                         val filteredBooks = filterBooks(previousState.books, command.filter)
