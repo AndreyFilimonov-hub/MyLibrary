@@ -59,6 +59,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 
 class LazyBookPaginator(
@@ -68,6 +69,10 @@ class LazyBookPaginator(
     private val textMeasurer: TextMeasurer,
     private val density: Density
 ) {
+
+    companion object {
+        private val textMeasurementMutex = Mutex()
+    }
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val taskExecutor = PriorityTaskExecutor()
@@ -603,7 +608,7 @@ class LazyBookPaginator(
         return trimmed to adjustedPlaceholders
     }
 
-    private fun paginateChapterGreedy(
+    private suspend fun paginateChapterGreedy(
         text: AnnotatedString,
         placeholders: List<AnnotatedString.Range<Placeholder>>,
         textMeasurer: TextMeasurer,
@@ -674,14 +679,18 @@ class LazyBookPaginator(
                 }
             }
 
-            val result = textMeasurer.measure(
-                text = windowText,
-                style = style,
-                placeholders = cappedPlaceholders,
-                constraints = Constraints(
-                    maxWidth = containerSize.width
-                )
-            )
+            val result = textMeasurementMutex.withLock {
+                withContext(Dispatchers.Main.immediate) {
+                    textMeasurer.measure(
+                        text = windowText,
+                        style = style,
+                        placeholders = cappedPlaceholders,
+                        constraints = Constraints(
+                            maxWidth = containerSize.width
+                        )
+                    )
+                }
+            }
 
             var lastFittingLine = -1
 
