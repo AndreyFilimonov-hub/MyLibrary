@@ -25,6 +25,7 @@ class BookStorage {
         val extension = when(bookFormat) {
             BookFormat.EPUB -> "epub"
             BookFormat.FB2 -> "fb2"
+            BookFormat.PDF -> "pdf"
         }
 
         val file = PlatformFile(

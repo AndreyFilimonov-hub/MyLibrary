@@ -1,8 +1,9 @@
 package com.filimonov.mylibrary.feature.library.di
 
 import com.filimonov.mylibrary.feature.library.data.parser.BookParser
-import com.filimonov.mylibrary.feature.library.data.parser.EpubParser
-import com.filimonov.mylibrary.feature.library.data.parser.Fb2Parser
+import com.filimonov.mylibrary.feature.library.data.parser.epub.EpubParser
+import com.filimonov.mylibrary.feature.library.data.parser.fb2.Fb2Parser
+import com.filimonov.mylibrary.feature.library.data.parser.pdf.PdfParser
 import com.filimonov.mylibrary.feature.library.data.repository.BookRepositoryImpl
 import com.filimonov.mylibrary.feature.library.domain.repository.BookRepository
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
@@ -50,7 +51,8 @@ val libraryModule = module {
     single<BookParser> {
         BookParser(
             epubParser = get(),
-            fb2Parser = get()
+            fb2Parser = get(),
+            pdfParser = get()
         )
     }
 
@@ -64,6 +66,12 @@ val libraryModule = module {
     single<Fb2Parser> {
         Fb2Parser(
             coverStorage = get(),
+            bookStorage = get()
+        )
+    }
+
+    single<PdfParser> {
+        PdfParser(
             bookStorage = get()
         )
     }

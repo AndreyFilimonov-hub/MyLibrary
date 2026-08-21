@@ -1,7 +1,8 @@
-package com.filimonov.mylibrary.feature.library.data.parser
+package com.filimonov.mylibrary.feature.library.data.parser.fb2
 
 import com.filimonov.mylibrary.core.storage.BookStorage
 import com.filimonov.mylibrary.core.storage.CoverStorage
+import com.filimonov.mylibrary.feature.library.data.parser.BookFormat
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser

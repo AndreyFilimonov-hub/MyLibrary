@@ -1,5 +1,8 @@
 package com.filimonov.mylibrary.feature.library.data.parser
 
+import com.filimonov.mylibrary.feature.library.data.parser.epub.EpubParser
+import com.filimonov.mylibrary.feature.library.data.parser.fb2.Fb2Parser
+import com.filimonov.mylibrary.feature.library.data.parser.pdf.PdfParser
 import com.filimonov.mylibrary.feature.library.domain.model.Book
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
@@ -9,7 +12,8 @@ import kotlinx.coroutines.withContext
 
 class BookParser(
     private val epubParser: EpubParser,
-    private val fb2Parser: Fb2Parser
+    private val fb2Parser: Fb2Parser,
+    private val pdfParser: PdfParser
 ) {
 
     suspend fun parseBook(path: String): Book {
@@ -20,6 +24,7 @@ class BookParser(
             when(detectFormat(bytes)) {
                 BookFormat.EPUB -> epubParser.parseBook(bytes)
                 BookFormat.FB2 -> fb2Parser.parseBook(bytes)
+                BookFormat.PDF -> pdfParser.parseBook(bytes)
             }
         }
     }
@@ -45,6 +50,17 @@ class BookParser(
             )
         ) {
             return BookFormat.FB2
+        }
+
+        if (
+            bytes.size >= 5 &&
+            bytes[0] == '%'.code.toByte() &&
+            bytes[1] == 'P'.code.toByte() &&
+            bytes[2] == 'D'.code.toByte() &&
+            bytes[3] == 'F'.code.toByte() &&
+            bytes[4] == '-'.code.toByte()
+        ) {
+            return BookFormat.PDF
         }
 
         error("Unsupported book format")
