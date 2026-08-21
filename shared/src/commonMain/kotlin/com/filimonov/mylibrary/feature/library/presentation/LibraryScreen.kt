@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -140,6 +141,9 @@ fun LibraryScreen(
         val invalidEpubException = stringResource(Res.string.invalid_epub_exception)
         val unknownError = stringResource(Res.string.unknown_error)
         val ok = stringResource(Res.string.ok)
+
+        val listState = rememberLazyListState()
+
         LaunchedEffect(Unit) {
             viewModel.event.collect { event ->
                 when (event) {
@@ -153,6 +157,8 @@ fun LibraryScreen(
                             actionLabel = ok
                         )
                     }
+
+                    LibraryEvent.BookAdded -> listState.animateScrollToItem(0)
                 }
             }
         }
@@ -172,6 +178,7 @@ fun LibraryScreen(
                         books = currentState.filteredBooks,
                         selectedFilter = currentState.filter,
                         coverImageCache = coverImageCache,
+                        listState = listState,
                         onFilterChipClick = { filter ->
                             viewModel.processCommand(LibraryCommand.SelectFilter(filter))
                         },
@@ -216,6 +223,7 @@ private fun LibraryContent(
     books: List<Book>,
     selectedFilter: LibraryFilter,
     coverImageCache: CoverImageCache,
+    listState: LazyListState,
     onFilterChipClick: (LibraryFilter) -> Unit,
     onBookClick: (Long, String) -> Unit,
     onBookDelete: (Book) -> Unit,
@@ -227,14 +235,6 @@ private fun LibraryContent(
     }
     var openItemId by remember {
         mutableStateOf<Long?>(null)
-    }
-
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(books.size) {
-        if (books.isNotEmpty()) {
-            listState.animateScrollToItem(0)
-        }
     }
 
     Column(
