@@ -47,6 +47,8 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
 
+            implementation(libs.pdfbox.android)
+
             implementation(libs.koin.android)
         }
         commonMain.dependencies {
