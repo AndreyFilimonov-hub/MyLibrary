@@ -26,6 +26,7 @@ navigationCompose = "2.9.2"
 room3 = "3.0.1"
 sqlite = "2.7.0"
 ksp = "2.3.10"
+coil = "3.3.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -73,6 +74,8 @@ filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose
 epub4kmp-core = { module = "com.darkrockstudios:epub4kmp-core", version.ref = "epub4kmpCore" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
