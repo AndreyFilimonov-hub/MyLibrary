@@ -23,13 +23,12 @@ class BookRepositoryImpl(
         }
     }
 
-    override suspend fun addBook(bookPath: String): MyResult<Book, LibraryError> {
+    override suspend fun addBook(bookPath: String): MyResult<Unit, LibraryError> {
         return runCatching(
             mapError = { it.toLibraryError() }
         ) {
             val book = bookParser.parseBook(bookPath)
             bookDao.insert(book.toDbModel())
-            book
         }
     }
 
