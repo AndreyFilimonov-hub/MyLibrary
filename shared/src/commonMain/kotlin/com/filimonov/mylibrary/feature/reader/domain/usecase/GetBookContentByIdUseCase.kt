@@ -8,6 +8,6 @@ class GetBookContentByIdUseCase(
 ) {
 
     suspend operator fun invoke(bookId: Long): List<Chapter> {
-        return repository.getBookById(bookId)
+        return repository.getBookContentById(bookId)
     }
 }

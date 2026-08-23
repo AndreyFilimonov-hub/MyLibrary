@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.feature.library.presentation
 
-import com.filimonov.mylibrary.feature.library.domain.model.Book
+import com.filimonov.mylibrary.core.domain.model.Book
 
 sealed interface LibraryState {
 
