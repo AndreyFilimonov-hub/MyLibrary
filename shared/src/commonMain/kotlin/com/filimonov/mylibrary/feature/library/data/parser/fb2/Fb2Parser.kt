@@ -2,8 +2,8 @@ package com.filimonov.mylibrary.feature.library.data.parser.fb2
 
 import com.filimonov.mylibrary.core.storage.BookStorage
 import com.filimonov.mylibrary.core.storage.CoverStorage
-import com.filimonov.mylibrary.feature.library.data.parser.BookFormat
-import com.filimonov.mylibrary.feature.library.domain.model.Book
+import com.filimonov.mylibrary.core.domain.model.BookFormat
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.parser.Parser
 import kotlinx.coroutines.Dispatchers
@@ -96,6 +96,7 @@ class Fb2Parser(
                 author = author,
                 path = bookPath,
                 coverPath = coverPath,
+                bookFormat = BookFormat.FB2,
                 hash = hash,
                 isFavorite = false,
                 isRead = false

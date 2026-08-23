@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
 @OptIn(FlowPreview::class)
 class ReaderViewModel(
     private val bookId: Long,
-    private val getBookUseCase: GetBookContentByIdUseCase,
+    private val getBookContentByIdUseCase: GetBookContentByIdUseCase,
     private val getReaderSettingsUseCase: GetReaderSettingsUseCase,
     private val saveSettingsUseCase: SaveSettingsUseCase,
     private val getReadingProgressUseCase: GetReadingProgressUseCase,
@@ -59,7 +59,7 @@ class ReaderViewModel(
 
     private fun loadBook() {
         viewModelScope.launch {
-            val chaptersDeferred = async { getBookUseCase(bookId) }
+            val chaptersDeferred = async { getBookContentByIdUseCase(bookId) }
             val settingsDeferred = async { getReaderSettingsUseCase().first() }
             val progressDeferred = async { getReadingProgressUseCase(bookId) }
 
@@ -138,14 +138,7 @@ class ReaderViewModel(
     }
 
     private fun onSearchResultSelected(result: SearchResult) {
-        reduce { currentState ->
-            currentState.copy(
-                pendingNavigation = NavigationTarget(
-                    result.chapterIndex,
-                    result.pageIndexInChapter
-                )
-            )
-        }
+        jumpToPageNumber(result.globalPageIndex)
     }
 
     private fun clearSearch() {

@@ -45,10 +45,10 @@ val readerModule = module {
         SaveProgressUseCase(get())
     }
 
-    viewModel { (bookId: Long) ->
+    viewModel<ReaderViewModel> { (bookId: Long) ->
         ReaderViewModel(
             bookId = bookId,
-            getBookUseCase = get(),
+            getBookContentByIdUseCase = get(),
             getReaderSettingsUseCase = get(),
             saveSettingsUseCase = get(),
             getReadingProgressUseCase = get(),

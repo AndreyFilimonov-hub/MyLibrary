@@ -1,8 +1,8 @@
 package com.filimonov.mylibrary.feature.library.data.parser.pdf
 
 import com.filimonov.mylibrary.core.storage.BookStorage
-import com.filimonov.mylibrary.feature.library.data.parser.BookFormat
-import com.filimonov.mylibrary.feature.library.domain.model.Book
+import com.filimonov.mylibrary.core.domain.model.BookFormat
+import com.filimonov.mylibrary.core.domain.model.Book
 import okio.ByteString.Companion.toByteString
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -34,6 +34,7 @@ class PdfParser(
             author = author,
             path = path,
             coverPath = null,
+            bookFormat = BookFormat.PDF,
             hash = hash,
             isFavorite = false,
             isRead = false
