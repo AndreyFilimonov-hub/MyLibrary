@@ -77,7 +77,10 @@ kotlin {
             implementation(libs.filekit.dialogs)
             implementation(libs.filekit.dialogs.compose)
 
+            implementation(libs.pdfium)
+
             implementation(libs.epub4kmp.core)
+            implementation("io.github.scarlet-pan:logger:1.2.0")
             implementation(libs.okio)
 
             implementation(libs.ksoup)
