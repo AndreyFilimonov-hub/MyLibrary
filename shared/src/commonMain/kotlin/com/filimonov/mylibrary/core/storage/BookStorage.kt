@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.core.storage
 
-import com.filimonov.mylibrary.feature.library.data.parser.BookFormat
+import com.filimonov.mylibrary.core.domain.model.BookFormat
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.filesDir

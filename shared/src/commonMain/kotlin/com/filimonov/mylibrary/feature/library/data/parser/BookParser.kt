@@ -1,9 +1,10 @@
 package com.filimonov.mylibrary.feature.library.data.parser
 
+import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.feature.library.data.parser.epub.EpubParser
 import com.filimonov.mylibrary.feature.library.data.parser.fb2.Fb2Parser
 import com.filimonov.mylibrary.feature.library.data.parser.pdf.PdfParser
-import com.filimonov.mylibrary.feature.library.domain.model.Book
+import com.filimonov.mylibrary.core.domain.model.Book
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.Dispatchers

@@ -67,9 +67,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
-import com.filimonov.mylibrary.feature.library.domain.model.Book
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.library.presentation.utils.asString
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
@@ -99,7 +100,7 @@ import kotlin.math.roundToInt
 fun LibraryScreen(
     modifier: Modifier = Modifier,
     viewModel: LibraryViewModel = koinViewModel(),
-    onBookClick: (Long, String) -> Unit
+    onBookClick: (Long, String, BookFormat) -> Unit
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle()
 
@@ -220,7 +221,7 @@ private fun LibraryContent(
     selectedFilter: LibraryFilter,
     listState: LazyListState,
     onFilterChipClick: (LibraryFilter) -> Unit,
-    onBookClick: (Long, String) -> Unit,
+    onBookClick: (Long, String, BookFormat) -> Unit,
     onBookDelete: (Book) -> Unit,
     onToggleRead: (Book) -> Unit,
     onToggleFavorite: (Book) -> Unit
@@ -285,7 +286,7 @@ private fun LibraryContent(
                         BookItem(
                             book = book,
                             onClick = {
-                                onBookClick(book.id, book.title)
+                                onBookClick(book.id, book.title, book.bookFormat)
                             },
                             onToggleRead = {
                                 onToggleRead(book)

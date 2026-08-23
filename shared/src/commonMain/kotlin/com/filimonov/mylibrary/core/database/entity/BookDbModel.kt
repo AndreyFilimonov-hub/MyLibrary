@@ -20,7 +20,7 @@ data class BookDbModel(
     val path: String,
     val coverPath: String?,
     val hash: String,
+    val bookFormat: String,
     val isFavorite: Boolean = false,
-    val isRead: Boolean = false,
-    val currentPage: Int = 0
+    val isRead: Boolean = false
 )

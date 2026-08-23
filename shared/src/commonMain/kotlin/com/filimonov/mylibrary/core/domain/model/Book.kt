@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.feature.library.domain.model
+package com.filimonov.mylibrary.core.domain.model
 
 data class Book(
     val id: Long,
@@ -6,6 +6,7 @@ data class Book(
     val author: String,
     val path: String,
     val coverPath: String?,
+    val bookFormat: BookFormat,
     val hash: String,
     val isFavorite: Boolean,
     val isRead: Boolean
