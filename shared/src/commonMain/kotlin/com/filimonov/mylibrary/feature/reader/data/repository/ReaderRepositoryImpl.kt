@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.filimonov.mylibrary.core.database.dao.BookDao
 import com.filimonov.mylibrary.core.database.dao.BookReadingProgressDao
+import com.filimonov.mylibrary.core.domain.model.Book
+import com.filimonov.mylibrary.feature.library.data.mapper.toDomain
 import com.filimonov.mylibrary.feature.reader.data.mapper.toDbModel
 import com.filimonov.mylibrary.feature.reader.data.mapper.toDomain
 import com.filimonov.mylibrary.feature.reader.data.parser.ContentParser
@@ -35,7 +37,11 @@ class ReaderRepositoryImpl(
         val THEME = stringPreferencesKey("theme ")
     }
 
-    override suspend fun getBookById(bookId: Long): List<Chapter> {
+    override suspend fun getBookById(bookId: Long): Book {
+        return bookDao.getBookById(bookId).toDomain()
+    }
+
+    override suspend fun getBookContentById(bookId: Long): List<Chapter> {
         val bookPath = bookDao.getBookFilePath(bookId)
 
         return contentParser.parseBookContent(bookPath)
