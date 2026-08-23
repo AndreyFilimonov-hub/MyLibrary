@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.core.storage
 
-import com.filimonov.mylibrary.feature.library.data.parser.BookFormat
+import com.filimonov.mylibrary.core.domain.model.BookFormat
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.filesDir
@@ -25,6 +25,7 @@ class BookStorage {
         val extension = when(bookFormat) {
             BookFormat.EPUB -> "epub"
             BookFormat.FB2 -> "fb2"
+            BookFormat.PDF -> "pdf"
         }
 
         val file = PlatformFile(

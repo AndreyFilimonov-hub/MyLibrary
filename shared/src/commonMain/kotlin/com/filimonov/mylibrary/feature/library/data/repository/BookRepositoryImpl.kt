@@ -8,7 +8,7 @@ import com.filimonov.mylibrary.feature.library.data.mapper.toDomain
 import com.filimonov.mylibrary.feature.library.data.mapper.toLibraryError
 import com.filimonov.mylibrary.feature.library.data.parser.BookParser
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
-import com.filimonov.mylibrary.feature.library.domain.model.Book
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.library.domain.repository.BookRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

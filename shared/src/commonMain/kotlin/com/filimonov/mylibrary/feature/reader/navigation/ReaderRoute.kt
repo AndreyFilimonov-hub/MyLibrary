@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ReaderRoute(
     val bookId: Long,
-    val bookTitle: String
+    val bookTitle: String,
+    val bookFormat: String
 )
