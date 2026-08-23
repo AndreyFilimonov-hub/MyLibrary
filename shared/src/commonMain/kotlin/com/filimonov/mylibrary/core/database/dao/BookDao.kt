@@ -22,6 +22,9 @@ interface BookDao {
     @Update
     suspend fun update(bookDbModel: BookDbModel)
 
+    @Query("SELECT * FROM books WHERE id = :bookId")
+    suspend fun getBookById(bookId: Long): BookDbModel
+
     @Query("SELECT path FROM books WHERE id = :bookId")
     suspend fun getBookFilePath(bookId: Long): String
 }

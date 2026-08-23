@@ -6,10 +6,12 @@ import com.filimonov.mylibrary.feature.reader.data.parser.Fb2ContentParser
 import com.filimonov.mylibrary.feature.reader.data.repository.ReaderRepositoryImpl
 import com.filimonov.mylibrary.feature.reader.domain.repository.ReaderRepository
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookContentByIdUseCase
+import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveProgressUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveSettingsUseCase
+import com.filimonov.mylibrary.feature.reader.presentation.pdfreader.PdfReaderViewModel
 import com.filimonov.mylibrary.feature.reader.presentation.reader.ReaderViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -23,6 +25,10 @@ val readerModule = module {
             dataStore = get(),
             contentParser = get()
         )
+    }
+
+    factory<GetBookUseCase> {
+        GetBookUseCase(get())
     }
 
     factory<GetBookContentByIdUseCase> {
@@ -45,8 +51,19 @@ val readerModule = module {
         SaveProgressUseCase(get())
     }
 
-    viewModel { (bookId: Long) ->
+    viewModel<ReaderViewModel> { (bookId: Long) ->
         ReaderViewModel(
+            bookId = bookId,
+            getBookContentByIdUseCase = get(),
+            getReaderSettingsUseCase = get(),
+            saveSettingsUseCase = get(),
+            getReadingProgressUseCase = get(),
+            saveProgressUseCase = get()
+        )
+    }
+
+    viewModel<PdfReaderViewModel> { (bookId: Long) ->
+        PdfReaderViewModel(
             bookId = bookId,
             getBookUseCase = get(),
             getReaderSettingsUseCase = get(),
