@@ -244,13 +244,7 @@ private fun PdfViewer(
             state = pagerState,
             reader = reader,
             readingMode = readingMode
-        ) { pageIndex ->
-            PdfPage(
-                state = reader,
-                pageIndex = pageIndex,
-                selectableText = true
-            )
-        }
+        )
         Text(
             text = "${pagerState.currentPage + 1} / ${reader.pageCount}",
             textAlign = TextAlign.Center
@@ -263,8 +257,7 @@ private fun PdfPager(
     modifier: Modifier = Modifier,
     state: PagerState,
     reader: PdfReaderState,
-    readingMode: ReadingMode,
-    content: @Composable (Int) -> Unit
+    readingMode: ReadingMode
 ) {
     when (readingMode) {
         ReadingMode.HORIZONTAL -> {
@@ -272,7 +265,10 @@ private fun PdfPager(
                 modifier = modifier.fillMaxHeight(),
                 state = state
             ) { pageIndex ->
-                content(pageIndex)
+                ZoomablePdfPage(
+                    reader = reader,
+                    pageIndex = pageIndex
+                )
             }
         }
 
