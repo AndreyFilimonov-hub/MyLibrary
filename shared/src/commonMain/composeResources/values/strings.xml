@@ -46,6 +46,7 @@
 
     <string name="search_book">Поиск по книге…</string>
     <string name="clear_search">Очистить поиск</string>
+    <string name="nothing_found">Ничего не найдено</string>
 
     <string name="go_to_page">Переход на страницу</string>
     <string name="page_placeholder">Стр. 1..%1$s</string>
