@@ -1,20 +1,18 @@
 package com.filimonov.mylibrary.feature.library.presentation
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -54,7 +52,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,19 +60,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
-import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.library.presentation.utils.asString
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
-import kotlinx.coroutines.launch
 import mylibrary.shared.generated.resources.Res
 import mylibrary.shared.generated.resources.add_first_book
 import mylibrary.shared.generated.resources.book_already_added
@@ -266,7 +263,8 @@ private fun LibraryContent(
             ) {
                 items(
                     items = books,
-                    key = { it.id }
+                    key = { it.id },
+                    contentType = { "books" }
                 ) { book ->
                     SwipeToDelete(
                         isOpen = openItemId == book.id,
@@ -379,6 +377,7 @@ private fun TopAppBar(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SwipeToDelete(
     modifier: Modifier = Modifier,
@@ -388,22 +387,26 @@ fun SwipeToDelete(
     onDelete: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    val offsetX = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-
     val density = LocalDensity.current
-
     val revealWidth = with(density) { 72.dp.toPx() }
-
-    LaunchedEffect(isOpen) {
-        offsetX.animateTo(
-            targetValue = if (isOpen) {
-                -revealWidth
-            } else {
-                0f
-            },
-            animationSpec = tween(200)
+    val anchors = remember(revealWidth) {
+        DraggableAnchors {
+            DeleteSwipeAnchor.Closed at 0f
+            DeleteSwipeAnchor.Open at -revealWidth
+        }
+    }
+    val state = remember(isOpen, anchors) {
+        AnchoredDraggableState(
+            initialValue = if (isOpen) DeleteSwipeAnchor.Open else DeleteSwipeAnchor.Closed,
+            anchors = anchors
         )
+    }
+
+    LaunchedEffect(state.currentValue) {
+        when (state.currentValue) {
+            DeleteSwipeAnchor.Open -> onOpen()
+            DeleteSwipeAnchor.Closed -> onClose()
+        }
     }
 
     Box(
@@ -439,45 +442,14 @@ fun SwipeToDelete(
                 .fillMaxWidth()
                 .padding(horizontal = AppDimension.xxl)
                 .offset {
-                    IntOffset(
-                        x = offsetX.value.roundToInt(),
+                    androidx.compose.ui.unit.IntOffset(
+                        x = state.offset.roundToInt(),
                         y = 0
                     )
                 }
-                .draggable(
+                .anchoredDraggable(
                     orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        scope.launch {
-                            offsetX.snapTo(
-                                (offsetX.value + delta)
-                                    .coerceIn(
-                                        -revealWidth,
-                                        0f
-                                    )
-                            )
-                        }
-                    },
-                    onDragStopped = {
-                        scope.launch {
-                            val target =
-                                if (offsetX.value < -revealWidth / 2f) {
-                                    -revealWidth
-                                } else {
-                                    0f
-                                }
-
-                            offsetX.animateTo(
-                                targetValue = target,
-                                animationSpec = tween(200)
-                            )
-
-                            if (target == -revealWidth) {
-                                onOpen()
-                            } else {
-                                onClose()
-                            }
-                        }
-                    }
+                    state = state
                 )
         ) {
             content()
@@ -500,7 +472,6 @@ private fun BookItem(
     ) {
         Row(
             modifier = Modifier.padding(AppDimension.md)
-                .height(IntrinsicSize.Min)
         ) {
             BookCover(
                 coverPath = book.coverPath
@@ -534,7 +505,10 @@ private fun BookCover(
         if (coverPath != null) {
             AsyncImage(
                 modifier = Modifier.fillMaxSize(),
-                model = "file://$coverPath",
+                model = ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(coverPath)
+                    .size(200)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )
@@ -556,7 +530,7 @@ private fun BookInfo(
     onToggleRead: () -> Unit
 ) {
     Column(
-        modifier = modifier.fillMaxHeight()
+        modifier = modifier
     ) {
         Text(
             text = book.title,
