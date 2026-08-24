@@ -9,7 +9,7 @@ sealed interface PdfReaderCommand {
 
     data class SaveProgress(val progress: ReadingProgress): PdfReaderCommand
 
-    data class SaveSettings(val settings: ReaderSettings): PdfReaderCommand
+    data class UpdateReaderSettings(val settings: ReaderSettings): PdfReaderCommand
 
     data class InputSearchQuery(val query: String): PdfReaderCommand
 
@@ -21,5 +21,5 @@ sealed interface PdfReaderCommand {
 
     data object ClearSearch: PdfReaderCommand
 
-    data object OnSearchNavigationHandled: PdfReaderCommand
+    data object OnNavigationHandled: PdfReaderCommand
 }

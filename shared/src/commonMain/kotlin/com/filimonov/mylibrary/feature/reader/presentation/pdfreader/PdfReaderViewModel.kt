@@ -2,6 +2,8 @@ package com.filimonov.mylibrary.feature.reader.presentation.pdfreader
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
+import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
@@ -57,41 +59,20 @@ class PdfReaderViewModel(
 
     fun processCommand(command: PdfReaderCommand) {
         when (command) {
-            is PdfReaderCommand.SaveProgress -> {
-                viewModelScope.launch {
-                    saveProgressUseCase(command.progress)
-                }
-            }
+            is PdfReaderCommand.SaveProgress -> saveProgress(command.progress)
 
-            is PdfReaderCommand.SaveSettings -> {
-                _state.update { previousState ->
-                    if (previousState is PdfReaderUiState.Success) {
-                        previousState.copy(settings = command.settings)
-                    } else previousState
-                }
-                viewModelScope.launch { saveSettingsUseCase(command.settings) }
-            }
+            is PdfReaderCommand.UpdateReaderSettings -> updateSettings(command.settings)
 
             is PdfReaderCommand.InputSearchQuery -> updateSearchQuery(command.query)
 
-            is PdfReaderCommand.SelectSearchResult -> reduce {
-                it.copy(pendingSearchPage = command.result.globalPageIndex)
-            }
+            is PdfReaderCommand.SelectSearchResult -> onSearchResultSelected(command.result)
 
-            is PdfReaderCommand.JumpToPage -> reduce {
-                it.copy(pendingSearchPage = command.page)
-            }
+            is PdfReaderCommand.JumpToPage -> jumpToPage(command.page)
 
-            is PdfReaderCommand.PdfOpened -> {
-                if (reader !== command.reader) pageTextCache.clear()
-                reader = command.reader
-                reduce { it.copy(pageCount = command.pageCount) }
-            }
+            is PdfReaderCommand.PdfOpened -> onPdfOpened(command.reader, command.pageCount)
 
             PdfReaderCommand.ClearSearch -> clearSearch()
-            PdfReaderCommand.OnSearchNavigationHandled -> reduce {
-                it.copy(pendingSearchPage = null)
-            }
+            PdfReaderCommand.OnNavigationHandled -> onNavigationHandled()
         }
     }
 
@@ -149,6 +130,45 @@ class PdfReaderViewModel(
         reduce {
             it.copy(searchQuery = "", searchResults = emptyList(), isSearching = false)
         }
+    }
+
+    private fun onNavigationHandled() {
+        reduce {
+            it.copy(pendingSearchPage = null)
+        }
+    }
+
+    private fun onPdfOpened(pdfReader: PdfReaderState, pageCount: Int) {
+        if (reader !== pdfReader) pageTextCache.clear()
+        reader = pdfReader
+        reduce { it.copy(pageCount = pageCount) }
+    }
+
+    private fun jumpToPage(page: Int) {
+        reduce {
+            it.copy(pendingSearchPage = page)
+        }
+    }
+
+    private fun onSearchResultSelected(result: SearchResult) {
+        reduce {
+            it.copy(pendingSearchPage = result.globalPageIndex)
+        }
+    }
+
+    private fun saveProgress(progress: ReadingProgress) {
+        viewModelScope.launch {
+            saveProgressUseCase(progress)
+        }
+    }
+
+    private fun updateSettings(settings: ReaderSettings) {
+        _state.update { previousState ->
+            if (previousState is PdfReaderUiState.Success) {
+                previousState.copy(settings = settings)
+            } else previousState
+        }
+        viewModelScope.launch { saveSettingsUseCase(settings) }
     }
 
     private suspend fun searchPdf(
