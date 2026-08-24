@@ -102,11 +102,11 @@ fun ReaderScreen(
     val state = viewModel.state.collectAsStateWithLifecycle()
 
     when (val currentState = state.value) {
-        ReaderState.Loading -> {
+        ReaderUiState.Loading -> {
             LoadingIndicator()
         }
 
-        is ReaderState.Success -> {
+        is ReaderUiState.Success -> {
             var showSearch by remember { mutableStateOf(false) }
             var showSettings by remember { mutableStateOf(false) }
 

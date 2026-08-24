@@ -162,11 +162,11 @@ fun LibraryScreen(
         }
 
         when (val currentState = state.value) {
-            LibraryState.Loading -> {
+            LibraryUiState.Loading -> {
                 LoadingIndicator()
             }
 
-            is LibraryState.Success -> {
+            is LibraryUiState.Success -> {
                 Box(
                     modifier = Modifier.fillMaxSize()
                 ) {
