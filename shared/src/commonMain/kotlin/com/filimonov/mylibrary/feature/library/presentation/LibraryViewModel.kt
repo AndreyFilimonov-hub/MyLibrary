@@ -2,10 +2,10 @@ package com.filimonov.mylibrary.feature.library.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.result.onFailure
 import com.filimonov.mylibrary.core.result.onSuccess
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
-import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.DeleteBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.GetBooksUseCase
@@ -96,7 +96,7 @@ class LibraryViewModel(
                 }
 
                 is LibraryCommand.DeleteBook -> {
-                    deleteBookUseCase(command.book.id)
+                    deleteBookUseCase(command.book)
                 }
 
                 is LibraryCommand.SelectFilter -> _state.update { previousState ->
