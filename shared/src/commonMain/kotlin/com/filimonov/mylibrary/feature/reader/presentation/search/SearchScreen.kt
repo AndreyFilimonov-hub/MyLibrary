@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import mylibrary.shared.generated.resources.Res
@@ -148,6 +149,19 @@ fun SearchScreen(
                                 )
                             }
                             HorizontalDivider()
+                        }
+                        if (query.isNotBlank() && results.isEmpty() && !isSearching) {
+                            item {
+                                Spacer(Modifier.height(AppDimension.lg))
+                            }
+                            item {
+                                Text(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    text = stringResource(Res.string.nothing_found),
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     }
                 }
