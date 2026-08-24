@@ -40,7 +40,7 @@ class ReaderViewModel(
     private val saveProgressUseCase: SaveProgressUseCase
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow<ReaderState>(ReaderState.Loading)
+    private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
     val state = _state.asStateFlow()
 
     private var lastProgress: ReadingProgress? = null
@@ -68,7 +68,7 @@ class ReaderViewModel(
             val progress = progressDeferred.await()
 
             _state.update {
-                ReaderState.Success(
+                ReaderUiState.Success(
                     chapters = chapters,
                     settings = settings,
                     restoredProgress = progress
@@ -83,7 +83,7 @@ class ReaderViewModel(
                 .filterNotNull()
                 .debounce(400)
                 .collectLatest { newSize ->
-                    val current = (_state.value as? ReaderState.Success)?.settings ?: return@collectLatest
+                    val current = (_state.value as? ReaderUiState.Success)?.settings ?: return@collectLatest
                     val newSettings =
                         current.copy(fontSize = newSize, lineHeight = (newSize * 1.5f).toInt())
                     updateSettings(newSettings)
@@ -116,7 +116,7 @@ class ReaderViewModel(
             is ReaderCommand.ChangeFontSize -> changeFontSize(command.fontSize)
             ReaderCommand.ClearSearchQuery -> clearSearch()
             is ReaderCommand.InputQuery -> onSearchQueryChanged(command.query)
-            is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page)
+            is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page, null)
             ReaderCommand.OnNavigationHandled -> onNavigationHandled()
             is ReaderCommand.OnPaginationFinished -> onPaginationFinished(command.totalPages)
             is ReaderCommand.SaveProgress -> onProgressChanged(command.progress)
@@ -138,7 +138,7 @@ class ReaderViewModel(
     }
 
     private fun onSearchResultSelected(result: SearchResult) {
-        jumpToPageNumber(result.globalPageIndex)
+        jumpToPageNumber(result.globalPageIndex, result)
     }
 
     private fun clearSearch() {
@@ -147,12 +147,12 @@ class ReaderViewModel(
         }
     }
 
-    private fun jumpToPageNumber(globalPageIndex: Int) {
+    private fun jumpToPageNumber(globalPageIndex: Int, result: SearchResult?) {
         val currentPaginator = paginator ?: return
         val (chapterIndex, pageIndex) = currentPaginator.resolveGlobalPage(globalPageIndex)
             ?: return
         reduce { currentState ->
-            currentState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex))
+            currentState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex, result?.matchStart, result?.matchEnd))
         }
     }
 
@@ -193,12 +193,12 @@ class ReaderViewModel(
 
     private fun changeFontSize(delta: Int) {
         fontSizeRequestState.value =
-            ((state.value as ReaderState.Success).settings.fontSize + delta).coerceIn(12, 32)
+            ((state.value as ReaderUiState.Success).settings.fontSize + delta).coerceIn(12, 32)
     }
 
-    private fun reduce(reducer: (ReaderState.Success) -> ReaderState.Success) {
+    private fun reduce(reducer: (ReaderUiState.Success) -> ReaderUiState.Success) {
         _state.update { previousState ->
-            if (previousState is ReaderState.Success) {
+            if (previousState is ReaderUiState.Success) {
                 reducer(previousState)
             } else previousState
         }
@@ -235,5 +235,6 @@ class ReaderViewModel(
                 saveProgressUseCase(progress)
             }
         }
+        super.onCleared()
     }
 }

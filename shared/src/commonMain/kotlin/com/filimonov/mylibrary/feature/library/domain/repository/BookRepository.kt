@@ -11,7 +11,7 @@ interface BookRepository {
 
     suspend fun addBook(bookPath: String): MyResult<Unit, LibraryError>
 
-    suspend fun deleteBook(id: Long)
+    suspend fun deleteBook(book: Book)
 
     suspend fun updateBook(book: Book)
 }
