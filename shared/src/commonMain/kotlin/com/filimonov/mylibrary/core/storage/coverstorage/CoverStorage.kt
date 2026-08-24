@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.storage
+package com.filimonov.mylibrary.core.storage.coverstorage
 
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
@@ -20,12 +20,14 @@ class CoverStorage {
         bytes: ByteArray,
         fileName: String
     ): String {
+        val thumbnail = createCoverThumbnail(bytes)
+
         val file = PlatformFile(
             FileKit.filesDir,
             "covers/$fileName.jpg"
         )
 
-        file.write(bytes)
+        file.write(thumbnail)
 
         return file.path
     }
