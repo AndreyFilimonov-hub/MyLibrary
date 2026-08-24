@@ -284,6 +284,14 @@ class PdfReaderViewModel(
         )
     }
 
+    override fun onCleared() {
+        searchJob?.cancel()
+        searchJob = null
+        pageTextCache.clear()
+        reader = null
+        super.onCleared()
+    }
+
     private companion object {
         const val SNIPPET_CONTEXT_LENGTH = 30
     }
