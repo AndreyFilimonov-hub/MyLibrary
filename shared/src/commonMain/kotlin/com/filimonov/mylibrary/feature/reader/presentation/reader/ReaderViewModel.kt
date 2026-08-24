@@ -235,5 +235,6 @@ class ReaderViewModel(
                 saveProgressUseCase(progress)
             }
         }
+        super.onCleared()
     }
 }
