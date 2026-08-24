@@ -31,13 +31,13 @@ class EpubParser(
                 ?.let { bytes ->
                     coverStorage.saveCover(
                         bytes,
-                        Uuid.Companion.random().toString()
+                        Uuid.random().toString()
                     )
                 }
             val bookPath = bookStorage.saveBook(
                 bytes,
                 BookFormat.EPUB,
-                Uuid.Companion.random().toString()
+                Uuid.random().toString()
             )
 
             Book(
