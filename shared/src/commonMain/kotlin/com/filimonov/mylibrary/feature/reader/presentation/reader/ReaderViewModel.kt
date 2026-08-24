@@ -116,7 +116,7 @@ class ReaderViewModel(
             is ReaderCommand.ChangeFontSize -> changeFontSize(command.fontSize)
             ReaderCommand.ClearSearchQuery -> clearSearch()
             is ReaderCommand.InputQuery -> onSearchQueryChanged(command.query)
-            is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page)
+            is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page, null)
             ReaderCommand.OnNavigationHandled -> onNavigationHandled()
             is ReaderCommand.OnPaginationFinished -> onPaginationFinished(command.totalPages)
             is ReaderCommand.SaveProgress -> onProgressChanged(command.progress)
@@ -138,7 +138,7 @@ class ReaderViewModel(
     }
 
     private fun onSearchResultSelected(result: SearchResult) {
-        jumpToPageNumber(result.globalPageIndex)
+        jumpToPageNumber(result.globalPageIndex, result)
     }
 
     private fun clearSearch() {
@@ -147,12 +147,12 @@ class ReaderViewModel(
         }
     }
 
-    private fun jumpToPageNumber(globalPageIndex: Int) {
+    private fun jumpToPageNumber(globalPageIndex: Int, result: SearchResult?) {
         val currentPaginator = paginator ?: return
         val (chapterIndex, pageIndex) = currentPaginator.resolveGlobalPage(globalPageIndex)
             ?: return
         reduce { currentState ->
-            currentState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex))
+            currentState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex, result?.matchStart, result?.matchEnd))
         }
     }
 

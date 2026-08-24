@@ -1,5 +1,7 @@
 package com.filimonov.mylibrary.feature.reader.presentation.reader
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -55,8 +57,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -212,7 +216,12 @@ fun ReaderScreen(
                                         showSearch = false
                                     },
                                     onJumpToPage = { page ->
-                                        viewModel.processCommand(ReaderCommand.JumpToPageNumber(page))
+                                        viewModel.processCommand(
+                                            ReaderCommand.JumpToPageNumber(
+                                                page,
+                                                null
+                                            )
+                                        )
                                         showSearch = false
                                     }
                                 )
@@ -360,6 +369,8 @@ fun BookScreen(
                     restoredCharIndex = if (chapterIndex == restoredProgress?.chapterId) restoredProgress.charIndex else null,
                     openAtLastPage = chapterIndex < outerPagerState.settledPage,
                     forcedPageIndex = if (chapterIndex == pendingTarget?.chapterIndex) pendingTarget?.pageIndexInChapter else null,
+                    matchStart = pendingTarget?.matchStart,
+                    matchEnd = pendingTarget?.matchEnd,
                     onCharIndexChanged = { charIndex ->
                         onProgressChanged(
                             ReadingProgress(
@@ -450,10 +461,16 @@ private fun ChapterPageContent(
     restoredCharIndex: Int?,
     openAtLastPage: Boolean,
     forcedPageIndex: Int?,
+    matchStart: Int?,
+    matchEnd: Int?,
     onCharIndexChanged: (Int) -> Unit,
     onCurrentPageInChapterChanged: (pageIndex: Int) -> Unit,
     contentPadding: PaddingValues
 ) {
+    var highlightVisible by remember(matchStart, matchEnd) {
+        mutableStateOf(matchStart != null && matchEnd != null)
+    }
+
     if (pages == null) {
         LoadingIndicator()
         return
@@ -482,6 +499,14 @@ private fun ChapterPageContent(
         forcedPageIndex?.let { innerPagerState.scrollToPage(it.coerceIn(0, pages.lastIndex)) }
     }
 
+    LaunchedEffect(matchStart, matchEnd) {
+        if (matchStart == null || matchEnd == null) return@LaunchedEffect
+
+        highlightVisible = true
+        delay(2000)
+        highlightVisible = false
+    }
+
     var isFirstSettleAfterRepagination by remember(pages) { mutableStateOf(true) }
 
     if (isActiveChapter) {
@@ -496,6 +521,13 @@ private fun ChapterPageContent(
         }
     }
 
+    val highlightColor by animateColorAsState(
+        targetValue = if (highlightVisible) {
+            Color.Yellow.copy(alpha = 0.7f)
+        } else Color.Transparent,
+        animationSpec = tween(400)
+    )
+
     BookPager(
         modifier = modifier.fillMaxSize(),
         state = innerPagerState,
@@ -503,10 +535,38 @@ private fun ChapterPageContent(
     ) { pageIndex ->
         Text(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
-            text = pages[pageIndex],
+            text = buildHighlightAnnotatedText(
+                text = pages[pageIndex],
+                matchStart = matchStart,
+                matchEnd = matchEnd,
+                highlightColor = highlightColor
+            ),
             inlineContent = inlineContent,
             style = style,
             color = theme.text
+        )
+    }
+}
+
+private fun buildHighlightAnnotatedText(
+    text: AnnotatedString,
+    matchStart: Int?,
+    matchEnd: Int?,
+    highlightColor: Color
+): AnnotatedString {
+    if (matchStart == null || matchEnd == null) {
+        return text
+    }
+
+    return buildAnnotatedString {
+        append(text)
+
+        addStyle(
+            SpanStyle(
+                background = highlightColor
+            ),
+            start = matchStart,
+            end = matchEnd
         )
     }
 }
