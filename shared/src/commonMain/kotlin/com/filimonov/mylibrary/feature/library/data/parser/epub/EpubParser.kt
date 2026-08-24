@@ -1,7 +1,7 @@
 package com.filimonov.mylibrary.feature.library.data.parser.epub
 
 import com.filimonov.mylibrary.core.storage.BookStorage
-import com.filimonov.mylibrary.core.storage.CoverStorage
+import com.filimonov.mylibrary.core.storage.coverstorage.CoverStorage
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.domain.model.Book
 import io.documentnode.epub4kmp.epub.EpubReader
@@ -31,13 +31,13 @@ class EpubParser(
                 ?.let { bytes ->
                     coverStorage.saveCover(
                         bytes,
-                        Uuid.Companion.random().toString()
+                        Uuid.random().toString()
                     )
                 }
             val bookPath = bookStorage.saveBook(
                 bytes,
                 BookFormat.EPUB,
-                Uuid.Companion.random().toString()
+                Uuid.random().toString()
             )
 
             Book(

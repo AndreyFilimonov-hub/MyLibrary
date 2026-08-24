@@ -12,7 +12,7 @@ sealed interface ReaderCommand {
 
     data object ClearSearchQuery: ReaderCommand
 
-    data class JumpToPageNumber(val page: Int): ReaderCommand
+    data class JumpToPageNumber(val page: Int, val result: SearchResult?): ReaderCommand
 
     data object OnNavigationHandled : ReaderCommand
 

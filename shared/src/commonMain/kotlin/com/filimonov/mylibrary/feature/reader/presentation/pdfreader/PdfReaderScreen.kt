@@ -1,5 +1,8 @@
 package com.filimonov.mylibrary.feature.reader.presentation.pdfreader
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -37,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
@@ -56,6 +60,7 @@ import dev.nucleusframework.pdfium.PdfReaderState
 import dev.nucleusframework.pdfium.rememberPdfReaderState
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import mylibrary.shared.generated.resources.Res
 import mylibrary.shared.generated.resources.search
@@ -130,11 +135,12 @@ fun PdfReaderScreen(
                     restoredProgress = currentState.restoredProgress,
                     pageCount = currentState.pageCount,
                     pendingSearchPage = currentState.pendingSearchPage,
+                    selectedSearchHit = currentState.selectedSearchHit,
                     onPdfOpened = { reader, pageCount ->
                         viewModel.processCommand(PdfReaderCommand.PdfOpened(reader, pageCount))
                     },
                     onSearchNavigationHandled = {
-                        viewModel.processCommand(PdfReaderCommand.OnSearchNavigationHandled)
+                        viewModel.processCommand(PdfReaderCommand.OnNavigationHandled)
                     },
                     onPageChanged = { page ->
                         viewModel.processCommand(
@@ -179,7 +185,7 @@ fun PdfReaderScreen(
                         PdfReaderSettingsPanel(
                             settings = currentState.settings,
                             onSettingsChange = { settings ->
-                                viewModel.processCommand(PdfReaderCommand.SaveSettings(settings))
+                                viewModel.processCommand(PdfReaderCommand.UpdateReaderSettings(settings))
                             }
                         )
                     }
@@ -204,6 +210,7 @@ private fun PdfViewer(
     restoredProgress: ReadingProgress?,
     pageCount: Int?,
     pendingSearchPage: Int?,
+    selectedSearchHit: PdfSearchHit?,
     onPdfOpened: (PdfReaderState, Int) -> Unit,
     onSearchNavigationHandled: () -> Unit,
     onPageChanged: (Int) -> Unit
@@ -243,14 +250,9 @@ private fun PdfViewer(
             modifier = Modifier.weight(1f),
             state = pagerState,
             reader = reader,
-            readingMode = readingMode
-        ) { pageIndex ->
-            PdfPage(
-                state = reader,
-                pageIndex = pageIndex,
-                selectableText = true
-            )
-        }
+            readingMode = readingMode,
+            selectedSearchHit = selectedSearchHit
+        )
         Text(
             text = "${pagerState.currentPage + 1} / ${reader.pageCount}",
             textAlign = TextAlign.Center
@@ -264,7 +266,7 @@ private fun PdfPager(
     state: PagerState,
     reader: PdfReaderState,
     readingMode: ReadingMode,
-    content: @Composable (Int) -> Unit
+    selectedSearchHit: PdfSearchHit?
 ) {
     when (readingMode) {
         ReadingMode.HORIZONTAL -> {
@@ -272,7 +274,11 @@ private fun PdfPager(
                 modifier = modifier.fillMaxHeight(),
                 state = state
             ) { pageIndex ->
-                content(pageIndex)
+                ZoomablePdfPage(
+                    reader = reader,
+                    pageIndex = pageIndex,
+                    selectedSearchHit = selectedSearchHit
+                )
             }
         }
 
@@ -283,7 +289,8 @@ private fun PdfPager(
             ) { pageIndex ->
                 ZoomablePdfPage(
                     reader = reader,
-                    pageIndex = pageIndex
+                    pageIndex = pageIndex,
+                    selectedSearchHit = selectedSearchHit
                 )
             }
         }
@@ -293,7 +300,8 @@ private fun PdfPager(
 @Composable
 private fun ZoomablePdfPage(
     reader: PdfReaderState,
-    pageIndex: Int
+    pageIndex: Int,
+    selectedSearchHit: PdfSearchHit?
 ) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -332,9 +340,7 @@ private fun ZoomablePdfPage(
             ),
         contentAlignment = Alignment.Center
     ) {
-        PdfPage(
-            state = reader,
-            pageIndex = pageIndex,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
@@ -343,6 +349,65 @@ private fun ZoomablePdfPage(
                     translationX = offset.x
                     translationY = offset.y
                 }
+        ) {
+            PdfPage(
+                state = reader,
+                pageIndex = pageIndex,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            selectedSearchHit
+                ?.takeIf { it.pageIndex == pageIndex }
+                ?.let { hit ->
+                    PdfSearchHighlight(
+                        hit = hit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+        }
+    }
+}
+
+@Composable
+private fun PdfSearchHighlight(
+    hit: PdfSearchHit,
+    modifier: Modifier = Modifier
+) {
+    var isVisible by remember(hit.resultId) { mutableStateOf(true) }
+    val alpha by animateFloatAsState(
+        targetValue = if (isVisible) 0.45f else 0f,
+        animationSpec = tween(400),
+        label = "pdfSearchHighlightAlpha"
+    )
+
+    LaunchedEffect(hit.resultId) {
+        isVisible = true
+        delay(2_000)
+        isVisible = false
+    }
+
+    Canvas(modifier) {
+        if (hit.pageWidthInPoints <= 0f || hit.pageHeightInPoints <= 0f) return@Canvas
+
+        val scale = minOf(
+            size.width / hit.pageWidthInPoints,
+            size.height / hit.pageHeightInPoints
+        )
+        val pageWidth = hit.pageWidthInPoints * scale
+        val pageHeight = hit.pageHeightInPoints * scale
+        val leftInset = (size.width - pageWidth) / 2f
+        val topInset = (size.height - pageHeight) / 2f
+
+        drawRect(
+            color = Color.Yellow.copy(alpha = alpha),
+            topLeft = Offset(
+                leftInset + hit.rectInPoints.left * scale,
+                topInset + hit.rectInPoints.top * scale
+            ),
+            size = Size(
+                hit.rectInPoints.width * scale,
+                hit.rectInPoints.height * scale
+            )
         )
     }
 }

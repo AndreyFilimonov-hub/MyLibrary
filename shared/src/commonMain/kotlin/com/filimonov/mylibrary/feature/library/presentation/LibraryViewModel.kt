@@ -2,10 +2,10 @@ package com.filimonov.mylibrary.feature.library.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.result.onFailure
 import com.filimonov.mylibrary.core.result.onSuccess
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
-import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.library.domain.usecase.AddBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.DeleteBookUseCase
 import com.filimonov.mylibrary.feature.library.domain.usecase.GetBooksUseCase
@@ -26,7 +26,7 @@ class LibraryViewModel(
     private val updateBookUseCase: UpdateBookUseCase
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow<LibraryState>(LibraryState.Loading)
+    private val _state = MutableStateFlow<LibraryUiState>(LibraryUiState.Loading)
     val state = _state.asStateFlow()
 
     private val _event = MutableSharedFlow<LibraryEvent>()
@@ -36,14 +36,14 @@ class LibraryViewModel(
         getBooksUseCase()
             .onEach { books ->
                 _state.update { currentState ->
-                    if (currentState is LibraryState.Success) {
+                    if (currentState is LibraryUiState.Success) {
                         val filteredBooks = filterBooks(
                             books,
                             currentState.filter
                         )
                         currentState.copy(books = books, filteredBooks = filteredBooks)
                     } else {
-                        LibraryState.Success(
+                        LibraryUiState.Success(
                             books = books,
                             filteredBooks = books,
                             filter = LibraryFilter.ALL
@@ -59,7 +59,7 @@ class LibraryViewModel(
             when (command) {
                 is LibraryCommand.AddBook -> {
                     _state.update { previousState ->
-                        if (previousState is LibraryState.Success) {
+                        if (previousState is LibraryUiState.Success) {
                             previousState.copy(isBookUpload = true)
                         } else previousState
                     }
@@ -89,18 +89,18 @@ class LibraryViewModel(
                             }
                         }
                     _state.update { previousState ->
-                        if (previousState is LibraryState.Success) {
+                        if (previousState is LibraryUiState.Success) {
                             previousState.copy(isBookUpload = false)
                         } else previousState
                     }
                 }
 
                 is LibraryCommand.DeleteBook -> {
-                    deleteBookUseCase(command.book.id)
+                    deleteBookUseCase(command.book)
                 }
 
                 is LibraryCommand.SelectFilter -> _state.update { previousState ->
-                    if (previousState is LibraryState.Success) {
+                    if (previousState is LibraryUiState.Success) {
                         val filteredBooks = filterBooks(previousState.books, command.filter)
                         previousState.copy(filteredBooks = filteredBooks, filter = command.filter)
                     } else {
