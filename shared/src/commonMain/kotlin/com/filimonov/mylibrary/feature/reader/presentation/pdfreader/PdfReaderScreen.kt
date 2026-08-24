@@ -134,7 +134,7 @@ fun PdfReaderScreen(
                         viewModel.processCommand(PdfReaderCommand.PdfOpened(reader, pageCount))
                     },
                     onSearchNavigationHandled = {
-                        viewModel.processCommand(PdfReaderCommand.OnSearchNavigationHandled)
+                        viewModel.processCommand(PdfReaderCommand.OnNavigationHandled)
                     },
                     onPageChanged = { page ->
                         viewModel.processCommand(
@@ -179,7 +179,7 @@ fun PdfReaderScreen(
                         PdfReaderSettingsPanel(
                             settings = currentState.settings,
                             onSettingsChange = { settings ->
-                                viewModel.processCommand(PdfReaderCommand.SaveSettings(settings))
+                                viewModel.processCommand(PdfReaderCommand.UpdateReaderSettings(settings))
                             }
                         )
                     }
