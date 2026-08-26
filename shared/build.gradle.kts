@@ -17,7 +17,11 @@ kotlin {
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
-            isStatic = true
+            isStatic = false
+            linkerOpts(
+                "-L${projectDir}/../iosApp/ThirdParty/pdfium/${if (iosTarget.name == "iosArm64") "ios-arm64" else "ios-simulator-arm64"}",
+                "-lpdfium"
+            )
         }
     }
 

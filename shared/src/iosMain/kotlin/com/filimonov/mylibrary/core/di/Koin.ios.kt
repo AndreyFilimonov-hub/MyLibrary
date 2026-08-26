@@ -6,3 +6,9 @@ fun initKoin() = initKoin(
     databaseBuilder = getDatabaseBuilder(),
     dataStorePlatformModule = iosDataStoreModule
 )
+
+class KoinHelper {
+    fun start() {
+        initKoin()
+    }
+}
