@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		2E742DC7303F13FB0012ED70 /* libpdfium.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E742DC6303F13FB0012ED70 /* libpdfium.dylib */; };
 		2E742DC8303F13FB0012ED70 /* libpdfium.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 2E742DC6303F13FB0012ED70 /* libpdfium.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		2E742DE3303F18350012ED70 /* libpdfium.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E742DE2303F18350012ED70 /* libpdfium.dylib */; };
+		2E742DE4303F18350012ED70 /* libpdfium.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 2E742DE2303F18350012ED70 /* libpdfium.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -19,6 +21,7 @@
 			dstSubfolderSpec = 10;
 			files = (
 				2E742DC8303F13FB0012ED70 /* libpdfium.dylib in Embed Libraries */,
+				2E742DE4303F18350012ED70 /* libpdfium.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -28,6 +31,7 @@
 /* Begin PBXFileReference section */
 		0439999737C0B99958097395 /* MyLibrary.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyLibrary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2E742DC6303F13FB0012ED70 /* libpdfium.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libpdfium.dylib; path = "ThirdParty/pdfium/ios-simulator-arm64/libpdfium.dylib"; sourceTree = "<group>"; };
+		2E742DE2303F18350012ED70 /* libpdfium.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libpdfium.dylib; path = "ThirdParty/pdfium/ios-arm64/libpdfium.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -62,6 +66,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2E742DC7303F13FB0012ED70 /* libpdfium.dylib in Frameworks */,
+				2E742DE3303F18350012ED70 /* libpdfium.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +84,7 @@
 		2E742DC5303F13FB0012ED70 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				2E742DE2303F18350012ED70 /* libpdfium.dylib */,
 				2E742DC6303F13FB0012ED70 /* libpdfium.dylib */,
 			);
 			name = Frameworks;
@@ -223,6 +229,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/ThirdParty/pdfium/ios-simulator-arm64",
+					"$(PROJECT_DIR)/ThirdParty/pdfium/ios-arm64",
 				);
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -320,6 +327,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/ThirdParty/pdfium/ios-simulator-arm64",
+					"$(PROJECT_DIR)/ThirdParty/pdfium/ios-arm64",
 				);
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
