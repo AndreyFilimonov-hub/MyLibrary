@@ -1,5 +1,7 @@
 package com.filimonov.mylibrary.feature.reader.presentation.reader
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,6 +41,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,10 +56,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -109,11 +115,11 @@ fun ReaderScreen(
     val state = viewModel.state.collectAsStateWithLifecycle()
 
     when (val currentState = state.value) {
-        ReaderState.Loading -> {
+        ReaderUiState.Loading -> {
             LoadingIndicator()
         }
 
-        is ReaderState.Success -> {
+        is ReaderUiState.Success -> {
             var showSearch by remember { mutableStateOf(false) }
             var showSettings by remember { mutableStateOf(false) }
 
@@ -137,7 +143,8 @@ fun ReaderScreen(
                                 )
                             },
                             actions = {
-                                val waitForBookLoading = stringResource(Res.string.wait_for_book_loading)
+                                val waitForBookLoading =
+                                    stringResource(Res.string.wait_for_book_loading)
                                 val ok = stringResource(Res.string.ok)
                                 IconButton(onClick = {
                                     scope.launch {
@@ -209,11 +216,20 @@ fun ReaderScreen(
                                         viewModel.processCommand(ReaderCommand.InputQuery(query))
                                     },
                                     onResultClick = { searchResult ->
-                                        viewModel.processCommand(ReaderCommand.SelectSearchResult(searchResult))
+                                        viewModel.processCommand(
+                                            ReaderCommand.SelectSearchResult(
+                                                searchResult
+                                            )
+                                        )
                                         showSearch = false
                                     },
                                     onJumpToPage = { page ->
-                                        viewModel.processCommand(ReaderCommand.JumpToPageNumber(page))
+                                        viewModel.processCommand(
+                                            ReaderCommand.JumpToPageNumber(
+                                                page,
+                                                null
+                                            )
+                                        )
                                         showSearch = false
                                     }
                                 )
@@ -226,7 +242,11 @@ fun ReaderScreen(
                             ReaderSettingsPanel(
                                 settings = currentState.settings,
                                 onSettingsChange = { settings ->
-                                    viewModel.processCommand(ReaderCommand.UpdateReaderSettings(settings))
+                                    viewModel.processCommand(
+                                        ReaderCommand.UpdateReaderSettings(
+                                            settings
+                                        )
+                                    )
                                 },
                                 onChangeFontSize = { newSize ->
                                     viewModel.processCommand(ReaderCommand.ChangeFontSize(newSize))
@@ -276,8 +296,10 @@ fun BookScreen(
             val fullSize =
                 with(LocalDensity.current) { IntSize(maxWidth.roundToPx(), maxHeight.roundToPx()) }
 
-            val horizontalPaddingPx = with(LocalDensity.current) { AppDimension.xxl.toPx() * 2 }.toInt()
-            val verticalPaddingPx = with(LocalDensity.current) { AppDimension.sm.toPx() * 2 }.toInt()
+            val horizontalPaddingPx =
+                with(LocalDensity.current) { AppDimension.xxl.toPx() * 2 }.toInt()
+            val verticalPaddingPx =
+                with(LocalDensity.current) { AppDimension.sm.toPx() * 2 }.toInt()
 
             val rawContainerSize = IntSize(
                 width = (fullSize.width - horizontalPaddingPx).coerceAtLeast(0),
@@ -358,6 +380,8 @@ fun BookScreen(
                     restoredCharIndex = if (chapterIndex == restoredProgress?.chapterId) restoredProgress.charIndex else null,
                     openAtLastPage = chapterIndex < outerPagerState.settledPage,
                     forcedPageIndex = if (chapterIndex == pendingTarget?.chapterIndex) pendingTarget?.pageIndexInChapter else null,
+                    matchStart = pendingTarget?.matchStart,
+                    matchEnd = pendingTarget?.matchEnd,
                     onCharIndexChanged = { charIndex ->
                         onProgressChanged(
                             ReadingProgress(
@@ -370,7 +394,10 @@ fun BookScreen(
                     onCurrentPageInChapterChanged = { pageIndex ->
                         displayedPosition = CurrentPosition(chapterIndex, pageIndex)
                     },
-                    contentPadding = PaddingValues(horizontal = AppDimension.xxl, vertical = AppDimension.sm)
+                    contentPadding = PaddingValues(
+                        horizontal = AppDimension.xxl,
+                        vertical = AppDimension.sm
+                    )
                 )
                 errors[chapterIndex]?.let {
                     ErrorContent(
@@ -451,10 +478,16 @@ private fun ChapterPageContent(
     restoredCharIndex: Int?,
     openAtLastPage: Boolean,
     forcedPageIndex: Int?,
+    matchStart: Int?,
+    matchEnd: Int?,
     onCharIndexChanged: (Int) -> Unit,
     onCurrentPageInChapterChanged: (pageIndex: Int) -> Unit,
     contentPadding: PaddingValues
 ) {
+    var highlightVisible by remember(matchStart, matchEnd) {
+        mutableStateOf(matchStart != null && matchEnd != null)
+    }
+
     if (pages == null) {
         LoadingIndicator()
         return
@@ -483,6 +516,14 @@ private fun ChapterPageContent(
         forcedPageIndex?.let { innerPagerState.scrollToPage(it.coerceIn(0, pages.lastIndex)) }
     }
 
+    LaunchedEffect(matchStart, matchEnd) {
+        if (matchStart == null || matchEnd == null) return@LaunchedEffect
+
+        highlightVisible = true
+        delay(2000)
+        highlightVisible = false
+    }
+
     var isFirstSettleAfterRepagination by remember(pages) { mutableStateOf(true) }
 
     if (isActiveChapter) {
@@ -497,6 +538,13 @@ private fun ChapterPageContent(
         }
     }
 
+    val highlightColor by animateColorAsState(
+        targetValue = if (highlightVisible) {
+            Color.Yellow.copy(alpha = 0.7f)
+        } else Color.Transparent,
+        animationSpec = tween(400)
+    )
+
     BookPager(
         modifier = modifier.fillMaxSize(),
         state = innerPagerState,
@@ -504,10 +552,38 @@ private fun ChapterPageContent(
     ) { pageIndex ->
         Text(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
-            text = pages[pageIndex],
+            text = buildHighlightAnnotatedText(
+                text = pages[pageIndex],
+                matchStart = matchStart,
+                matchEnd = matchEnd,
+                highlightColor = highlightColor
+            ),
             inlineContent = inlineContent,
             style = style,
             color = theme.text
+        )
+    }
+}
+
+private fun buildHighlightAnnotatedText(
+    text: AnnotatedString,
+    matchStart: Int?,
+    matchEnd: Int?,
+    highlightColor: Color
+): AnnotatedString {
+    if (matchStart == null || matchEnd == null) {
+        return text
+    }
+
+    return buildAnnotatedString {
+        append(text)
+
+        addStyle(
+            SpanStyle(
+                background = highlightColor
+            ),
+            start = matchStart,
+            end = matchEnd
         )
     }
 }
@@ -518,20 +594,60 @@ private fun ImageViewer(
     bitmap: ImageBitmap,
     onDismiss: () -> Unit
 ) {
-    Dialog(
-        onDismissRequest = onDismiss
-    ) {
+    Dialog(onDismissRequest = onDismiss) {
         var scale by remember(bitmap) { mutableFloatStateOf(1f) }
         var offset by remember(bitmap) { mutableStateOf(Offset.Zero) }
+        var containerSize by remember(bitmap) { mutableStateOf(IntSize.Zero) }
+
+        val displayedImageSize by remember(bitmap, containerSize) {
+            derivedStateOf {
+                if (containerSize.width == 0 || containerSize.height == 0) {
+                    return@derivedStateOf IntSize.Zero
+                }
+                val imageAspect = bitmap.width.toFloat() / bitmap.height.toFloat()
+                val containerAspect = containerSize.width.toFloat() / containerSize.height.toFloat()
+
+                if (imageAspect > containerAspect) {
+                    val width = containerSize.width
+                    val height = (width / imageAspect).toInt()
+                    IntSize(width, height)
+                } else {
+                    val height = containerSize.height
+                    val width = (height * imageAspect).toInt()
+                    IntSize(width, height)
+                }
+            }
+        }
+
+        fun clampOffset(value: Offset, scale: Float): Offset {
+            if (scale <= 1f || displayedImageSize == IntSize.Zero) {
+                return Offset.Zero
+            }
+
+            val maxX = displayedImageSize.width * (scale - 1f) / 2f
+            val maxY = displayedImageSize.height * (scale - 1f) / 2f
+            return Offset(
+                x = value.x.coerceIn(-maxX, maxX),
+                y = value.y.coerceIn(-maxY, maxY)
+            )
+        }
 
         val transformState = rememberTransformableState { _, zoomChange, panChange, _ ->
-            scale = (scale * zoomChange).coerceIn(1f, 5f)
-            val panSpeed = scale.coerceAtLeast(1f)
-            offset += panChange * panSpeed
+            val newScale = (scale * zoomChange).coerceIn(1f, 5f)
+            scale = newScale
+            if (newScale > 1f) {
+                val panSpeed = 1f + (newScale - 1f) * 0.5f
+                offset = clampOffset(offset + panChange * panSpeed, newScale)
+            } else {
+                offset = Offset.Zero
+            }
         }
-        BoxWithConstraints(
+
+        Box(
             modifier = modifier
                 .heightIn(500.dp)
+                .fillMaxWidth()
+                .onSizeChanged { containerSize = it }
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color.Black.copy(alpha = 0.8f))
                 .clickable { onDismiss() },
@@ -548,10 +664,12 @@ private fun ImageViewer(
                         translationX = offset.x
                         translationY = offset.y
                     }
-                    .transformable(transformState)
+                    .transformable(state = transformState, canPan = { scale > 1f })
                     .clickable(
                         indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
+                        interactionSource = remember {
+                            MutableInteractionSource()
+                        }
                     ) {},
                 contentScale = ContentScale.Fit
             )

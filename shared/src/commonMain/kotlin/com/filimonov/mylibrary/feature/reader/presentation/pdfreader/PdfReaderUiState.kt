@@ -15,8 +15,10 @@ sealed interface PdfReaderUiState {
         val restoredProgress: ReadingProgress?,
         val searchQuery: String = "",
         val searchResults: List<SearchResult> = emptyList(),
+        val searchHits: Map<String, PdfSearchHit> = emptyMap(),
         val isSearching: Boolean = false,
         val pageCount: Int? = null,
-        val pendingSearchPage: Int? = null
+        val pendingSearchPage: Int? = null,
+        val selectedSearchHit: PdfSearchHit? = null
     ): PdfReaderUiState
 }

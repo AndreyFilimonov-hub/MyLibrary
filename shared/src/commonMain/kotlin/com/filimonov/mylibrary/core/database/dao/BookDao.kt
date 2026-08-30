@@ -27,4 +27,7 @@ interface BookDao {
 
     @Query("SELECT path FROM books WHERE id = :bookId")
     suspend fun getBookFilePath(bookId: Long): String
+
+    @Query("SELECT EXISTS(SELECT 1 FROM books WHERE hash = :hash)")
+    suspend fun existsByHash(hash: String): Boolean
 }

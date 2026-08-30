@@ -272,11 +272,14 @@ class LazyBookPaginator(
                     val snippet = "...${text.substring(snippetStart, snippetEnd)}..."
 
                     result += SearchResult(
+                        id = "$chapterIndex:$pageIndex:$matchIndex",
                         globalPageIndex =
                             globalPageIndex(
                                 chapterIndex,
                                 pageIndex
                             ) ?: 0,
+                        matchStart = matchIndex,
+                        matchEnd = matchIndex + query.length,
                         snippet = snippet
                     )
 

@@ -3,6 +3,7 @@ package com.filimonov.mylibrary.core.storage
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.delete
 import io.github.vinceglb.filekit.filesDir
 import io.github.vinceglb.filekit.path
 import io.github.vinceglb.filekit.write
@@ -36,5 +37,13 @@ class BookStorage {
         file.write(bytes)
 
         return file.path
+    }
+
+    suspend fun deleteBook(
+        path: String?
+    ) {
+        if (path == null) return
+
+        PlatformFile(path).delete(false)
     }
 }
