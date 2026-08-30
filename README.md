@@ -1,31 +1,159 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# MyLibrary
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+**MyLibrary** — офлайн-приложение для личной библиотеки и чтения книг на Android и iOS. Один Kotlin Multiplatform-модуль содержит основную логику и интерфейс на Compose Multiplatform; нативные проекты нужны только как точки входа и для платформенных интеграций.
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Приложение не использует сервер: книги, обложки, настройки и прогресс чтения хранятся локально на устройстве.
 
-### Running the apps
+## Возможности
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+### Библиотека
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+- Импорт EPUB, FB2 и PDF-файлов.
+- Извлечение названия, автора и обложки, где это поддерживает формат.
+- Создание уменьшенных копий обложек для плавной прокрутки списка.
+- Фильтрация всех, избранных и прочитанных книг.
+- Отметки «избранное» и «прочитано».
+- Удаление записи книги, исходного файла и обложки из локального хранилища.
+- Защита от повторного добавления одной и той же книги по SHA-256 хэшу.
 
-### Running tests
+### EPUB и FB2 reader
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+- Постраничная пагинация с учётом размера экрана, шрифта и межстрочного интервала.
+- Горизонтальный и вертикальный режимы чтения.
+- Настройки размера шрифта, темы и режима чтения.
+- Сохранение и восстановление позиции чтения.
+- Поиск по книге, сниппеты и переход к найденному слову.
+- Подсветка выбранного результата поиска.
+- Поддержка встроенных изображений и полноэкранного просмотра.
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+### PDF reader
 
----
+- Горизонтальный и вертикальный pager.
+- Pinch-to-zoom, перемещение увеличенной страницы с ограничением границ.
+- Счётчик текущей страницы.
+- Поиск по тексту PDF с частичной выдачей результатов и кэшированием текста страниц.
+- Переход к результату и кратковременная подсветка выбранного фрагмента.
+- Сохранение прогресса и общих настроек reader.
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## Архитектура
+
+Проект разделён на два приложения-точки входа и общий модуль:
+
+```text
+androidApp/  Android entry point
+iosApp/      SwiftUI entry point и Xcode-проект
+shared/      Общий Kotlin Multiplatform-код
+```
+
+В `shared` используются слои:
+
+- `data` — парсеры файлов, Room DAO, хранилище книг и обложек, реализации репозиториев;
+- `domain` — модели, интерфейсы репозиториев и use case;
+- `presentation` — Compose-экраны, ViewModel, UI state и команды;
+- `androidMain` / `iosMain` — платформенные реализации PDF-метаданных, базы данных, DataStore, DI и обработки обложек.
+
+Пагинация EPUB/FB2 зависит от параметров Compose (`TextMeasurer`, размеров и плотности экрана), поэтому выполняется отдельным presentation-компонентом `LazyBookPaginator` и отменяется при закрытии reader.
+
+## Технологии
+
+- Kotlin Multiplatform и Kotlin 2.3.
+- Compose Multiplatform и Material 3.
+- Kotlin Coroutines и Flow.
+- Koin для dependency injection.
+- Room KMP и SQLite Bundled для локальной БД.
+- DataStore Preferences для настроек reader.
+- Navigation Compose.
+- Coil 3 для обложек.
+- FileKit для выбора и работы с файлами на Android и iOS.
+- epub4kmp для EPUB, KSoup для FB2/HTML/XML, PDFium для отображения и поиска PDF.
+- PDFBox Android для чтения PDF-метаданных на Android.
+
+## Запуск Android
+
+### Требования
+
+- Android Studio.
+- JDK 21.
+- Android SDK Platform 36.
+- Android-устройство с Android 7.0 (API 24) или новее либо эмулятор.
+
+### Через Android Studio
+
+1. Откройте корневую папку проекта.
+2. Дождитесь завершения Gradle Sync.
+3. Выберите конфигурацию `androidApp`.
+4. Выберите эмулятор или физическое устройство и нажмите **Run**.
+
+### Через терминал
+
+macOS/Linux:
+
+```bash
+./gradlew :androidApp:assembleDebug
+```
+
+Windows:
+
+```powershell
+.\gradlew.bat :androidApp:assembleDebug
+```
+
+APK будет создан в `androidApp/build/outputs/apk/debug/`. Для установки на подключённое устройство можно выполнить `:androidApp:installDebug`.
+
+## Запуск iOS
+
+### Требования
+
+- macOS.
+- Xcode 16.2 или новее.
+- Установленный JDK 21.
+- Для запуска на физическом устройстве — Apple ID и настроенный code signing.
+
+В проекте минимальная поддерживаемая версия iOS — **18.2**.
+
+### Основной способ — через Xcode
+
+1. На macOS откройте `iosApp` в Xcode.
+2. Для физического устройства укажите свою команду разработки в **Signing & Capabilities**. При необходимости заполните `TEAM_ID` в `iosApp/Configuration/Config.xcconfig`.
+3. Выберите destination:
+   - iPhone/iPad Simulator на Apple Silicon — simulator;
+   - подключённый iPhone или iPad — physical device.
+4. Нажмите **Run**.
+
+В target уже есть Build Phase **Compile Kotlin Framework**. Он запускает Gradle-задачу `:shared:embedAndSignAppleFrameworkForXcode`, которая собирает подходящий `Shared.framework` для выбранного destination. При обычном запуске вручную добавлять framework не требуется.
+
+### PDFium: подключение нативного бинарника
+
+`Shared.framework` вручную добавлять не нужно: его для Xcode собирает Build Phase **Compile Kotlin Framework**.
+
+Для PDF reader в репозитории уже лежат два нативных бинарника PDFium. Ничего скачивать или собирать отдельно не нужно:
+
+| Destination | Файл |
+| --- | --- |
+| iPhone/iPad Simulator на Apple Silicon | `iosApp/ThirdParty/pdfium/ios-simulator-arm64/libpdfium.dylib` |
+| Физический iPhone/iPad | `iosApp/ThirdParty/pdfium/ios-arm64/libpdfium.dylib` |
+
+Перед первым запуском выберите бинарник, соответствующий текущему destination:
+
+1. В Xcode откройте target **iosApp** → **General** → **Frameworks, Libraries, and Embedded Content**.
+2. Нажмите **+**, затем **Add Other…** → **Add Files…**.
+3. Выберите нужный `libpdfium.dylib` из таблицы.
+4. В колонке **Embed** выберите **Embed & Sign**.
+
+Для simulator и физического устройства нельзя использовать один и тот же файл. При смене destination замените подключённый бинарник на второй вариант. Если в списке уже есть `libpdfium.dylib`, удалите старую ссылку перед добавлением подходящего файла.
+
+Xcode автоматически добавит библиотеку в **Link Binary With Libraries** и скопирует её в приложение. Если ошибка `library not found for -lpdfium` сохраняется, проверьте, что в **Build Settings** → **Library Search Paths** указан каталог выбранного бинарника.
+
+## Проверка
+
+Android host-тесты:
+
+```bash
+./gradlew :shared:testAndroidHostTest
+```
+
+iOS simulator-тесты запускаются только на macOS:
+
+```bash
+./gradlew :shared:iosSimulatorArm64Test
+```
