@@ -34,6 +34,10 @@
     <string name="settings">Настройки</string>
 
     <string name="wait_for_book_loading">Дождитесь полной загрузки книги</string>
+    <string name="pagination_error_title">Не удалось открыть главу</string>
+    <string name="pagination_error_message">Попробуйте еще раз</string>
+    <string name="retry">Повторить</string>
+    <string name="close_reader">Закрыть книгу</string>
 
     <string name="page_info">стр. %1$s / %2$s</string>
     <string name="page_info_template">стр. ... / ...</string>

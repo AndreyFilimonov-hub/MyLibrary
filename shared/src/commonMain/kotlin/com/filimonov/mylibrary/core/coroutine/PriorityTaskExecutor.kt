@@ -58,9 +58,11 @@ class PriorityTaskExecutor(
                     try {
                         block()
                         completion.complete(Unit)
-                    } catch (e: Throwable) {
+                    } catch (e: CancellationException) {
                         completion.completeExceptionally(e)
                         throw e
+                    } catch (e: Throwable) {
+                        completion.completeExceptionally(e)
                     }
                 }
             )
