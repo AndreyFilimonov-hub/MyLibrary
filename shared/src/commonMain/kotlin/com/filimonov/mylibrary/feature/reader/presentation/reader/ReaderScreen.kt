@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +33,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -77,9 +79,13 @@ import com.filimonov.mylibrary.feature.reader.presentation.settings.ReaderSettin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import mylibrary.shared.generated.resources.Res
+import mylibrary.shared.generated.resources.close_reader
 import mylibrary.shared.generated.resources.ok
 import mylibrary.shared.generated.resources.page_info
 import mylibrary.shared.generated.resources.page_info_template
+import mylibrary.shared.generated.resources.pagination_error_message
+import mylibrary.shared.generated.resources.pagination_error_title
+import mylibrary.shared.generated.resources.retry
 import mylibrary.shared.generated.resources.search
 import mylibrary.shared.generated.resources.settings
 import mylibrary.shared.generated.resources.wait_for_book_loading
@@ -97,7 +103,8 @@ fun ReaderScreen(
         parameters = {
             parametersOf(bookId)
         }
-    )
+    ),
+    onBack: () -> Unit
 ) {
     val state = viewModel.state.collectAsStateWithLifecycle()
 
@@ -181,7 +188,8 @@ fun ReaderScreen(
                         onNavigationHandled = {
                             viewModel.processCommand(ReaderCommand.OnNavigationHandled)
                         },
-                        getPaginator = viewModel::getOrCreatePaginator
+                        getPaginator = viewModel::getOrCreatePaginator,
+                        onBack = onBack
                     )
 
                     if (showSearch) {
@@ -251,7 +259,8 @@ fun BookScreen(
     onPaginationFinished: (Int?) -> Unit,
     onProgressChanged: (ReadingProgress) -> Unit,
     onNavigationHandled: () -> Unit,
-    getPaginator: (List<Chapter>, TextStyle, IntSize, TextMeasurer, Density) -> LazyBookPaginator
+    getPaginator: (List<Chapter>, TextStyle, IntSize, TextMeasurer, Density) -> LazyBookPaginator,
+    onBack: () -> Unit
 ) {
     val textMeasurer = rememberTextMeasurer()
     val style = TextStyle(fontSize = settings.fontSize.sp, lineHeight = settings.lineHeight.sp)
@@ -295,6 +304,8 @@ fun BookScreen(
             val paginator = remember(style, containerSize) {
                 getPaginator(chapters, style, containerSize, textMeasurer, density)
             }
+
+            val errors by paginator.errors.collectAsStateWithLifecycle()
 
             val inlineContent = paginator.getInlineContent()
 
@@ -361,6 +372,12 @@ fun BookScreen(
                     },
                     contentPadding = PaddingValues(horizontal = AppDimension.xxl, vertical = AppDimension.sm)
                 )
+                errors[chapterIndex]?.let {
+                    ErrorContent(
+                        onCloseReader = onBack,
+                        onRetry = { paginator.retry(chapterIndex) }
+                    )
+                }
             }
 
             val globalPageIndex = paginator.globalPageIndex(
@@ -540,4 +557,41 @@ private fun ImageViewer(
             )
         }
     }
+}
+
+@Composable
+fun ErrorContent(
+    modifier: Modifier = Modifier,
+    onCloseReader: () -> Unit,
+    onRetry: () -> Unit
+) {
+    val title = stringResource(Res.string.pagination_error_title)
+    val message = stringResource(Res.string.pagination_error_message)
+    val retry = stringResource(Res.string.retry)
+    val closeReader = stringResource(Res.string.close_reader)
+
+    AlertDialog(
+        modifier = modifier,
+        onDismissRequest = {},
+        title = {
+            Text(title)
+        },
+        text = {
+            Text(message)
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onRetry()
+                }
+            ) {
+                Text(retry)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCloseReader) {
+                Text(closeReader)
+            }
+        }
+    )
 }

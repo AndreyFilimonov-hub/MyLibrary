@@ -33,10 +33,20 @@ fun AppNavHost() {
             composable<ReaderRoute> { entry ->
                 val route = entry.toRoute<ReaderRoute>()
                 val bookFormat = BookFormat.valueOf(route.bookFormat)
-                when(bookFormat) {
+                when (bookFormat) {
                     BookFormat.EPUB,
-                    BookFormat.FB2 -> ReaderScreen(bookId = route.bookId, bookTitle = route.bookTitle)
-                    BookFormat.PDF -> PdfReaderScreen(bookId = route.bookId, bookTitle = route.bookTitle)
+                    BookFormat.FB2 -> ReaderScreen(
+                        bookId = route.bookId,
+                        bookTitle = route.bookTitle,
+                        onBack = {
+                            navController.popBackStack()
+                        }
+                    )
+
+                    BookFormat.PDF -> PdfReaderScreen(
+                        bookId = route.bookId,
+                        bookTitle = route.bookTitle
+                    )
                 }
             }
         }

@@ -44,6 +44,7 @@ import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node
 import com.fleeksoft.ksoup.nodes.TextNode
 import com.fleeksoft.ksoup.parser.Parser
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,6 +83,9 @@ class LazyBookPaginator(
         get() = _chapterPages.asStateFlow()
 
     private val _pageCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
+
+    private val _errors = MutableStateFlow<Map<Int, PaginationError>>(emptyMap())
+    val errors = _errors.asStateFlow()
 
     private val progressMutex = Mutex()
     private val inProgress = mutableMapOf<Int, CompletableDeferred<List<AnnotatedString>>>()
@@ -142,7 +146,15 @@ class LazyBookPaginator(
             return
         }
         scope.launch {
-            ensurePaginatedAwait(chapterIndex)
+            try {
+                ensurePaginatedAwait(chapterIndex)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                _errors.update {
+                    it + (chapterIndex to PaginationError.CannotBuildPage)
+                }
+            }
         }
     }
 
@@ -201,6 +213,11 @@ class LazyBookPaginator(
         }
 
         return deferred.await()
+    }
+
+    fun retry(chapterIndex: Int) {
+        _errors.update { it - chapterIndex }
+        ensurePaginated(chapterIndex)
     }
 
     fun globalPageIndex(chapterIndex: Int, pageInChapter: Int): Int? {
