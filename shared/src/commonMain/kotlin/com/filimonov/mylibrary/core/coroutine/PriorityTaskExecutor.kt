@@ -19,7 +19,8 @@ class PriorityTaskExecutor(
 ) {
     private data class Task(
         val priority: TaskPriority,
-        val block: suspend () -> Unit
+        val block: suspend () -> Unit,
+        val completion: CompletableDeferred<Unit>
     )
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -64,7 +65,8 @@ class PriorityTaskExecutor(
                     } catch (e: Throwable) {
                         completion.completeExceptionally(e)
                     }
-                }
+                },
+                completion = completion
             )
 
             when(priority) {
@@ -104,6 +106,15 @@ class PriorityTaskExecutor(
     }
 
     fun cancel() {
-        scope.cancel()
+        scope.launch {
+            val tasks = mutex.withLock {
+                val queuedTasks = highQueue.toList() + backgroundQueue.toList()
+                highQueue.clear()
+                backgroundQueue.clear()
+                queuedTasks
+            }
+            tasks.forEach { it.completion.cancel() }
+            cancel()
+        }
     }
 }
