@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.feature.library.data.mapper
 
-import com.filimonov.mylibrary.core.database.entity.BookDbModel
+import com.filimonov.mylibrary.data.database.entity.BookDbModel
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.domain.model.Book
 

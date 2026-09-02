@@ -6,8 +6,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.filimonov.mylibrary.core.database.dao.BookDao
-import com.filimonov.mylibrary.core.database.dao.BookReadingProgressDao
+import com.filimonov.mylibrary.data.database.dao.BookDao
+import com.filimonov.mylibrary.data.database.dao.BookReadingProgressDao
 import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.library.data.mapper.toDomain
 import com.filimonov.mylibrary.feature.reader.data.mapper.toDbModel

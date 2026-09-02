@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.database
+package com.filimonov.mylibrary.data.database
 
 import android.content.Context
 import androidx.room3.Room

@@ -1,10 +1,10 @@
-package com.filimonov.mylibrary.core.database.dao
+package com.filimonov.mylibrary.data.database.dao
 
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
-import com.filimonov.mylibrary.core.database.entity.BookDbModel
+import com.filimonov.mylibrary.data.database.entity.BookDbModel
 import kotlinx.coroutines.flow.Flow
 
 @Dao

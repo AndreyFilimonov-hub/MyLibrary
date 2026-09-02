@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.database.entity
+package com.filimonov.mylibrary.data.database.entity
 
 import androidx.room3.Entity
 import androidx.room3.Index

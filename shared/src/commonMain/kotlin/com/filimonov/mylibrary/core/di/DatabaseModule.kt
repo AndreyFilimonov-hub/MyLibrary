@@ -1,10 +1,10 @@
 package com.filimonov.mylibrary.core.di
 
 import androidx.room3.RoomDatabase
-import com.filimonov.mylibrary.core.database.AppDatabase
-import com.filimonov.mylibrary.core.database.dao.BookDao
-import com.filimonov.mylibrary.core.database.dao.BookReadingProgressDao
-import com.filimonov.mylibrary.core.database.getRoomDatabase
+import com.filimonov.mylibrary.data.database.AppDatabase
+import com.filimonov.mylibrary.data.database.dao.BookDao
+import com.filimonov.mylibrary.data.database.dao.BookReadingProgressDao
+import com.filimonov.mylibrary.data.database.getRoomDatabase
 import org.koin.dsl.module
 
 fun databaseModule(

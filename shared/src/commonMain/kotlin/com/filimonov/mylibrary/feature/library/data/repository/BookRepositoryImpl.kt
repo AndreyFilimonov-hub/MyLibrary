@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.feature.library.data.repository
 
-import com.filimonov.mylibrary.core.database.dao.BookDao
+import com.filimonov.mylibrary.data.database.dao.BookDao
 import com.filimonov.mylibrary.core.result.MyResult
 import com.filimonov.mylibrary.core.result.runCatching
 import com.filimonov.mylibrary.feature.library.data.mapper.toDbModel
