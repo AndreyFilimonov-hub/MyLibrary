@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.feature.library.data.parser.pdf
 
-import com.filimonov.mylibrary.core.storage.BookStorage
+import com.filimonov.mylibrary.data.storage.BookStorage
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.domain.model.Book
 import okio.ByteString.Companion.toByteString

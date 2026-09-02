@@ -60,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -69,26 +70,27 @@ import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
+import com.filimonov.mylibrary.feature.library.presentation.utils.DeleteSwipeAnchor
 import com.filimonov.mylibrary.feature.library.presentation.utils.asString
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
-import mylibrary.shared.generated.resources.Res
-import mylibrary.shared.generated.resources.add_first_book
-import mylibrary.shared.generated.resources.book_already_added
-import mylibrary.shared.generated.resources.cancel
-import mylibrary.shared.generated.resources.delete
-import mylibrary.shared.generated.resources.delete_book
-import mylibrary.shared.generated.resources.delete_book_question
-import mylibrary.shared.generated.resources.favorite_books_empty
-import mylibrary.shared.generated.resources.filter_all
-import mylibrary.shared.generated.resources.filter_favorite
-import mylibrary.shared.generated.resources.filter_read
-import mylibrary.shared.generated.resources.invalid_epub_exception
-import mylibrary.shared.generated.resources.library_title
-import mylibrary.shared.generated.resources.ok
-import mylibrary.shared.generated.resources.read_books_empty
-import mylibrary.shared.generated.resources.unknown_error
+import mylibrary.feature.library.generated.resources.Res
+import mylibrary.feature.library.generated.resources.add_first_book
+import mylibrary.feature.library.generated.resources.book_already_added
+import mylibrary.feature.library.generated.resources.cancel
+import mylibrary.feature.library.generated.resources.delete
+import mylibrary.feature.library.generated.resources.delete_book
+import mylibrary.feature.library.generated.resources.delete_book_question
+import mylibrary.feature.library.generated.resources.favorite_books_empty
+import mylibrary.feature.library.generated.resources.filter_all
+import mylibrary.feature.library.generated.resources.filter_favorite
+import mylibrary.feature.library.generated.resources.filter_read
+import mylibrary.feature.library.generated.resources.invalid_epub_exception
+import mylibrary.feature.library.generated.resources.library_title
+import mylibrary.feature.library.generated.resources.ok
+import mylibrary.feature.library.generated.resources.read_books_empty
+import mylibrary.feature.library.generated.resources.unknown_error
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
@@ -241,7 +243,7 @@ private fun LibraryContent(
         ) {
             LibraryFilter.entries.forEach { filter ->
                 LibraryFilterChip(
-                    modifier = Modifier.weight(if (filter == LibraryFilter.READ) 0.4f else 0.3f),
+                    modifier = Modifier.Companion.weight(if (filter == LibraryFilter.READ) 0.4f else 0.3f),
                     filter = filter,
                     selected = selectedFilter == filter,
                     onClick = {
@@ -254,7 +256,7 @@ private fun LibraryContent(
             EmptyContent(filter = selectedFilter)
         } else {
             LazyColumn(
-                modifier = Modifier
+                modifier = Modifier.Companion
                     .weight(1f)
                     .padding(top = AppDimension.md),
                 contentPadding = PaddingValues(bottom = 108.dp),
@@ -415,7 +417,7 @@ fun SwipeToDelete(
             .clip(RoundedCornerShape(AppDimension.md))
     ) {
         Box(
-            modifier = Modifier
+            modifier = Modifier.Companion
                 .matchParentSize()
                 .padding(horizontal = AppDimension.xxl)
                 .clip(RoundedCornerShape(AppDimension.md))
@@ -442,7 +444,7 @@ fun SwipeToDelete(
                 .fillMaxWidth()
                 .padding(horizontal = AppDimension.xxl)
                 .offset {
-                    androidx.compose.ui.unit.IntOffset(
+                    IntOffset(
                         x = state.offset.roundToInt(),
                         y = 0
                     )
@@ -480,7 +482,7 @@ private fun BookItem(
             Spacer(modifier = Modifier.width(AppDimension.md))
 
             BookInfo(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.Companion.weight(1f),
                 book = book,
                 onToggleRead = onToggleRead,
                 onToggleFavorite = onToggleFavorite
@@ -543,7 +545,7 @@ private fun BookInfo(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.Companion.weight(1f))
         BookStatus(
             book = book,
             onToggleRead = onToggleRead,

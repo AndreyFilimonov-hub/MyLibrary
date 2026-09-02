@@ -1,10 +1,10 @@
 package com.filimonov.mylibrary.feature.library.data.parser
 
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.feature.library.data.parser.epub.EpubParser
 import com.filimonov.mylibrary.feature.library.data.parser.fb2.Fb2Parser
 import com.filimonov.mylibrary.feature.library.data.parser.pdf.PdfParser
-import com.filimonov.mylibrary.core.domain.model.Book
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.Dispatchers
@@ -22,7 +22,7 @@ class BookParser(
             val file = PlatformFile(path)
             val bytes = file.readBytes()
 
-            when(detectFormat(bytes)) {
+            when (detectFormat(bytes)) {
                 BookFormat.EPUB -> epubParser.parseBook(bytes)
                 BookFormat.FB2 -> fb2Parser.parseBook(bytes)
                 BookFormat.PDF -> pdfParser.parseBook(bytes)

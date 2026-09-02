@@ -95,6 +95,8 @@ kotlin {
             implementation(project(":core"))
             implementation(project(":data:database"))
             implementation(project(":data:storage"))
+            implementation(project(":feature:library"))
+            implementation(project(":feature:reader"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

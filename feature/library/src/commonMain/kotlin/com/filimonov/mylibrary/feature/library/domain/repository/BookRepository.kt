@@ -1,8 +1,8 @@
 package com.filimonov.mylibrary.feature.library.domain.repository
 
+import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.result.MyResult
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
-import com.filimonov.mylibrary.core.domain.model.Book
 import kotlinx.coroutines.flow.Flow
 
 interface BookRepository {

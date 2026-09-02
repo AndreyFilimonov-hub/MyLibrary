@@ -1,9 +1,9 @@
 package com.filimonov.mylibrary.feature.library.data.parser.epub
 
-import com.filimonov.mylibrary.core.storage.BookStorage
-import com.filimonov.mylibrary.core.storage.coverstorage.CoverStorage
-import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.domain.model.Book
+import com.filimonov.mylibrary.core.domain.model.BookFormat
+import com.filimonov.mylibrary.data.storage.BookStorage
+import com.filimonov.mylibrary.data.storage.coverstorage.CoverStorage
 import io.documentnode.epub4kmp.epub.EpubReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

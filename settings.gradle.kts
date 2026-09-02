@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.project
+
 rootProject.name = "MyLibrary"
 
 pluginManagement {
@@ -32,3 +34,5 @@ include(":shared")
 include(":core")
 include(":data:database")
 include(":data:storage")
+include(":feature:library")
+include(":feature:reader")
