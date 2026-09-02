@@ -93,6 +93,8 @@ kotlin {
             implementation(libs.androidx.datastore.preferences)
 
             implementation(project(":core"))
+            implementation(project(":data:database"))
+            implementation(project(":data:storage"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

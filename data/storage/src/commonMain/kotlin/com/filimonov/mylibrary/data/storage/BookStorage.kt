@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.storage
+package com.filimonov.mylibrary.data.storage
 
 import com.filimonov.mylibrary.core.domain.model.BookFormat
 import io.github.vinceglb.filekit.FileKit

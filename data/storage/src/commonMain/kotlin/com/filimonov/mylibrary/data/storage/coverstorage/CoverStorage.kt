@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.storage.coverstorage
+package com.filimonov.mylibrary.data.storage.coverstorage
 
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile

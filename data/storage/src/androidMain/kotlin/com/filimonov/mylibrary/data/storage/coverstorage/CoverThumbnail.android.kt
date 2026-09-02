@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.storage.coverstorage
+package com.filimonov.mylibrary.data.storage.coverstorage
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
