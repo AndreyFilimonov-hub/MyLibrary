@@ -1,31 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <resources>
-
     <!-- Common -->
 
     <string name="ok">ОК</string>
-
-    <!-- Library -->
-
-    <string name="library_title">My Library</string>
-
-    <string name="book_already_added">Книга уже добавлена</string>
-    <string name="invalid_epub_exception">Ошибка чтения, попробуйте другой файл</string>
-    <string name="unknown_error">Неизвестная ошибка</string>
-
-    <string name="add_first_book">Добавьте свою первую книгу</string>
-    <string name="favorite_books_empty">Здесь будут любимые книги</string>
-    <string name="read_books_empty">Здесь будут прочитанные книги</string>
-
-    <string name="filter_all">Все</string>
-    <string name="filter_favorite">Любимые</string>
-    <string name="filter_read">Прочитанные</string>
-
-    <string name="delete">Удалить</string>
-    <string name="delete_book_question">Удалить книгу?</string>
-    <string name="delete_book">Удалить «%1$s» из библиотеки?</string>
-    <string name="cancel">Отмена</string>
 
     <!-- Reader -->
 
@@ -68,5 +46,4 @@
 
     <string name="brightness">Яркость</string>
     <string name="theme">Тема оформления</string>
-
 </resources>

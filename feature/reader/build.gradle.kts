@@ -13,7 +13,7 @@ kotlin {
     iosSimulatorArm64()
 
     android {
-        namespace = "com.filimonov.mylibrary.feature.library"
+        namespace = "com.filimonov.mylibrary.feature.reader"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -25,7 +25,7 @@ kotlin {
     sourceSets {
         androidMain {
             dependencies {
-                implementation(libs.pdfbox.android)
+                implementation(libs.koin.android)
             }
         }
 
@@ -44,6 +44,10 @@ kotlin {
 
                 implementation(libs.kotlinx.coroutines.core)
 
+                implementation(libs.koin.core)
+                implementation(libs.koin.compose)
+                implementation(libs.koin.compose.viewmodel)
+
                 implementation(libs.filekit.core)
                 implementation(libs.filekit.dialogs)
                 implementation(libs.filekit.dialogs.compose)
@@ -56,13 +60,8 @@ kotlin {
 
                 implementation(libs.kotlinx.serialization.json)
 
-                implementation(libs.koin.core)
-                implementation(libs.koin.compose)
-                implementation(libs.koin.compose.viewmodel)
-
-                implementation(libs.coil.compose)
-
-                implementation(libs.androidx.sqlite.bundled) // посмотреть как выбросить ошибку чтоб убрать его
+                implementation(libs.androidx.datastore)
+                implementation(libs.androidx.datastore.preferences)
 
                 implementation(project(":core"))
                 implementation(project(":data:database"))

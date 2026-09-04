@@ -6,8 +6,8 @@ import com.filimonov.mylibrary.core.result.runCatching
 import com.filimonov.mylibrary.data.database.dao.BookDao
 import com.filimonov.mylibrary.data.storage.BookStorage
 import com.filimonov.mylibrary.data.storage.coverstorage.CoverStorage
-import com.filimonov.mylibrary.feature.library.data.mapper.toDbModel
-import com.filimonov.mylibrary.feature.library.data.mapper.toDomain
+import com.filimonov.mylibrary.data.database.mapper.toDbModel
+import com.filimonov.mylibrary.data.database.mapper.toDomain
 import com.filimonov.mylibrary.feature.library.data.mapper.toLibraryError
 import com.filimonov.mylibrary.feature.library.data.parser.BookParser
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError

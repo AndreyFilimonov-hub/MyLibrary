@@ -1,6 +1,7 @@
 package com.filimonov.mylibrary.core.di
 
 import com.filimonov.mylibrary.data.database.getDatabaseBuilder
+import com.filimonov.mylibrary.feature.reader.data.settings.iosDataStoreModule
 
 fun initKoin() = initKoin(
     databaseBuilder = getDatabaseBuilder(),

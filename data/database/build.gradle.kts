@@ -35,6 +35,8 @@ kotlin {
 
                 implementation(libs.androidx.room3.runtime)
                 implementation(libs.androidx.sqlite.bundled)
+
+                implementation(project(":core"))
             }
         }
 
