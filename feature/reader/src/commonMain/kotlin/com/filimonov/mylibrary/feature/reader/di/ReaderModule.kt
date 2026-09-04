@@ -18,6 +18,8 @@ import org.koin.dsl.module
 
 val readerModule = module {
 
+    includes(platformDataStoreModule)
+
     single<ReaderRepository> {
         ReaderRepositoryImpl(
             bookLocalDataSource = get(),

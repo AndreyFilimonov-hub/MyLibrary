@@ -1,9 +1,11 @@
-package com.filimonov.mylibrary.feature.reader.data.settings
+package com.filimonov.mylibrary.feature.reader.di
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.okio.OkioStorage
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferencesSerializer
+import com.filimonov.mylibrary.feature.reader.data.settings.createDataStore
+import com.filimonov.mylibrary.feature.reader.data.settings.dataStoreFileName
 import kotlinx.cinterop.ExperimentalForeignApi
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -14,7 +16,7 @@ import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 
 @OptIn(ExperimentalForeignApi::class)
-val iosDataStoreModule = module {
+actual val platformDataStoreModule = module {
     single<DataStore<Preferences>> {
         createDataStore(
             storage = OkioStorage(
@@ -28,7 +30,7 @@ val iosDataStoreModule = module {
                         create = false,
                         error = null,
                     )
-                    (requireNotNull(documentDirectory).path + "/$dataStoreFileName").toPath()
+                    (requireNotNull(documentDirectory).path + "/${dataStoreFileName}").toPath()
                 }
             )
         )
