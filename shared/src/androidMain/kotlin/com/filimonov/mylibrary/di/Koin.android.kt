@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.di
+package com.filimonov.mylibrary.di
 
 import android.content.Context
 import com.filimonov.mylibrary.data.database.getDatabaseBuilder

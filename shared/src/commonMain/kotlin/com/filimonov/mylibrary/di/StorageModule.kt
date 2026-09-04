@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.core.di
+package com.filimonov.mylibrary.di
 
 import com.filimonov.mylibrary.data.storage.BookStorage
 import com.filimonov.mylibrary.data.storage.coverstorage.CoverStorage
