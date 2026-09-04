@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.feature.library.data.parser.pdf
 
-import com.filimonov.mylibrary.core.storage.coverstorage.toNSData
+import io.github.vinceglb.filekit.utils.toNSData
 import platform.PDFKit.PDFDocument
 import platform.PDFKit.PDFDocumentAuthorAttribute
 import platform.PDFKit.PDFDocumentTitleAttribute

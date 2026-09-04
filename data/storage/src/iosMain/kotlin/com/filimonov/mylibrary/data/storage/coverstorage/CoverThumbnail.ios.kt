@@ -1,28 +1,17 @@
 package com.filimonov.mylibrary.data.storage.coverstorage
 
 import io.github.vinceglb.filekit.utils.toByteArray
-import kotlinx.cinterop.BetaInteropApi
+import io.github.vinceglb.filekit.utils.toNSData
 import kotlinx.cinterop.ExperimentalForeignApi
-import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.useContents
-import kotlinx.cinterop.usePinned
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
-import platform.Foundation.NSData
-import platform.Foundation.create
 import platform.UIKit.UIGraphicsBeginImageContextWithOptions
 import platform.UIKit.UIGraphicsEndImageContext
 import platform.UIKit.UIGraphicsGetImageFromCurrentImageContext
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
 import kotlin.math.min
-
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-fun ByteArray.toNSData(): NSData {
-    return usePinned {
-        NSData.create(bytes = it.addressOf(0), length = this.size.toULong())
-    }
-}
 
 @OptIn(ExperimentalForeignApi::class)
 actual fun createCoverThumbnail(
