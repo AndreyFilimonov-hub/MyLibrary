@@ -6,7 +6,7 @@ import androidx.core.graphics.scale
 import java.io.ByteArrayOutputStream
 import kotlin.math.min
 
-actual fun createCoverThumbnail(
+internal actual fun createCoverThumbnail(
     bytes: ByteArray,
     maxWidth: Int,
     maxHeight: Int,

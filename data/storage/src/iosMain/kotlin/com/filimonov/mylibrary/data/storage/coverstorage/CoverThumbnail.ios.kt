@@ -14,7 +14,7 @@ import platform.UIKit.UIImageJPEGRepresentation
 import kotlin.math.min
 
 @OptIn(ExperimentalForeignApi::class)
-actual fun createCoverThumbnail(
+internal actual fun createCoverThumbnail(
     bytes: ByteArray,
     maxWidth: Int,
     maxHeight: Int,

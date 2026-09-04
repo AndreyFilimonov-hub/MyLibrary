@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.data.storage.coverstorage
 
-expect fun createCoverThumbnail(
+internal expect fun createCoverThumbnail(
     bytes: ByteArray,
     maxWidth: Int = 256,
     maxHeight: Int = 384,

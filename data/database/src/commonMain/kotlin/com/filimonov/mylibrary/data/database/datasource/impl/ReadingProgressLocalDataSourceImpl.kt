@@ -6,7 +6,7 @@ import com.filimonov.mylibrary.data.database.datasource.ReadingProgressLocalData
 import com.filimonov.mylibrary.data.database.mapper.toDbModel
 import com.filimonov.mylibrary.data.database.mapper.toDomain
 
-class ReadingProgressLocalDataSourceImpl(
+internal class ReadingProgressLocalDataSourceImpl(
     private val readingProgressDao: BookReadingProgressDao
 ) : ReadingProgressLocalDataSource {
     override suspend fun insert(progress: ReadingProgress) {

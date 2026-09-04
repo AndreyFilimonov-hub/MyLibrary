@@ -5,7 +5,7 @@ import platform.PDFKit.PDFDocument
 import platform.PDFKit.PDFDocumentAuthorAttribute
 import platform.PDFKit.PDFDocumentTitleAttribute
 
-actual suspend fun extractPdfMetadata(bytes: ByteArray): PdfMetadata {
+internal actual suspend fun extractPdfMetadata(bytes: ByteArray): PdfMetadata {
     val nsData = bytes.toNSData()
     val document = PDFDocument(nsData)
 

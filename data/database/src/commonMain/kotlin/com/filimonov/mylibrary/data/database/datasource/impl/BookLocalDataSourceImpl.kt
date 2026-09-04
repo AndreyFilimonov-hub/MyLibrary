@@ -8,7 +8,7 @@ import com.filimonov.mylibrary.data.database.mapper.toDomain
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class BookLocalDataSourceImpl(
+internal class BookLocalDataSourceImpl(
     private val bookDao: BookDao
 ) : BookLocalDataSource {
     override fun observeBooks(): Flow<List<Book>> {

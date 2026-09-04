@@ -5,7 +5,7 @@ import com.filimonov.mylibrary.core.domain.model.BookFormat
 import com.filimonov.mylibrary.core.domain.model.Book
 
 
-fun BookDbModel.toDomain() = Book(
+internal fun BookDbModel.toDomain() = Book(
     id = id,
     title = title,
     author = author,
@@ -17,7 +17,7 @@ fun BookDbModel.toDomain() = Book(
     isRead = isRead
 )
 
-fun Book.toDbModel() = BookDbModel(
+internal fun Book.toDbModel() = BookDbModel(
     id = id,
     title = title,
     author = author,
