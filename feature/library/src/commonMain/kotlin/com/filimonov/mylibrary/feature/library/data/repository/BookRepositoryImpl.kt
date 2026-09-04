@@ -3,11 +3,9 @@ package com.filimonov.mylibrary.feature.library.data.repository
 import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.result.MyResult
 import com.filimonov.mylibrary.core.result.runCatching
-import com.filimonov.mylibrary.data.database.dao.BookDao
+import com.filimonov.mylibrary.data.database.datasource.BookLocalDataSource
 import com.filimonov.mylibrary.data.storage.BookStorage
 import com.filimonov.mylibrary.data.storage.coverstorage.CoverStorage
-import com.filimonov.mylibrary.data.database.mapper.toDbModel
-import com.filimonov.mylibrary.data.database.mapper.toDomain
 import com.filimonov.mylibrary.feature.library.data.mapper.toLibraryError
 import com.filimonov.mylibrary.feature.library.data.parser.BookParser
 import com.filimonov.mylibrary.feature.library.domain.error.LibraryError
@@ -15,26 +13,23 @@ import com.filimonov.mylibrary.feature.library.domain.repository.BookRepository
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import okio.ByteString.Companion.toByteString
 
 class BookRepositoryImpl(
-    private val bookDao: BookDao,
+    private val bookLocalDataSource: BookLocalDataSource,
     private val bookParser: BookParser,
     private val coverStorage: CoverStorage,
     private val bookStorage: BookStorage
 ) : BookRepository {
     override fun observeBooks(): Flow<List<Book>> {
-        return bookDao.observeBooks().map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return bookLocalDataSource.observeBooks()
     }
 
     override suspend fun addBook(bookPath: String): MyResult<Unit, LibraryError> {
         val bytes = PlatformFile(bookPath).readBytes()
         val hash = bytes.toByteString().sha256().hex()
 
-        if (bookDao.existsByHash(hash)) {
+        if (bookLocalDataSource.existsByHash(hash)) {
             return MyResult.Error(LibraryError.BookAlreadyExists)
         }
 
@@ -42,17 +37,17 @@ class BookRepositoryImpl(
             mapError = { it.toLibraryError() }
         ) {
             val book = bookParser.parseBook(bookPath)
-            bookDao.insert(book.toDbModel())
+            bookLocalDataSource.insert(book)
         }
     }
 
     override suspend fun deleteBook(book: Book) {
-        bookDao.delete(book.id)
+        bookLocalDataSource.delete(book.id)
         coverStorage.deleteCover(book.coverPath)
         bookStorage.deleteBook(book.path)
     }
 
     override suspend fun updateBook(book: Book) {
-        bookDao.update(book.toDbModel())
+        bookLocalDataSource.update(book)
     }
 }

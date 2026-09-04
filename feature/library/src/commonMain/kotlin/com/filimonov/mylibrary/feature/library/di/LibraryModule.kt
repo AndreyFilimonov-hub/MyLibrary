@@ -18,7 +18,7 @@ val libraryModule = module {
 
     single<BookRepository> {
         BookRepositoryImpl(
-            bookDao = get(),
+            bookLocalDataSource = get(),
             bookParser = get(),
             coverStorage = get(),
             bookStorage = get()
