@@ -1,13 +1,22 @@
-package com.filimonov.mylibrary.data.database
+package com.filimonov.mylibrary.data.database.di
 
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import com.filimonov.mylibrary.data.database.AppDatabase
+import com.filimonov.mylibrary.data.database.getRoomDatabase
 import kotlinx.cinterop.ExperimentalForeignApi
+import org.koin.dsl.module
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
-fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
+actual val platformDatabaseModule = module {
+    single<AppDatabase> {
+        getRoomDatabase(getDatabaseBuilder())
+    }
+}
+
+private fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
     val dbFilePath = documentDirectory() + "/book.db"
     return Room.databaseBuilder<AppDatabase>(
         name = dbFilePath,
