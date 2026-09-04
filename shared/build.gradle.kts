@@ -5,9 +5,6 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.androidx.room3)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -33,12 +30,6 @@ kotlin {
        compilerOptions {
            jvmTarget = JvmTarget.JVM_11
        }
-       androidResources {
-           enable = true
-       }
-       withHostTest {
-           isIncludeAndroidResources = true
-       }
        withDeviceTestBuilder {
            sourceSetTreeName = "test"
        }.configure {
@@ -48,9 +39,6 @@ kotlin {
 
     sourceSets {
         androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.compose.uiTooling)
-
             implementation(libs.pdfbox.android)
 
             implementation(libs.koin.android)
@@ -65,32 +53,15 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
 
-            implementation(libs.material.icons.extended)
-
-            implementation(libs.androidx.room3.runtime)
-            implementation(libs.androidx.sqlite.bundled)
-
             implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
 
             implementation(libs.navigation.compose)
-            implementation(libs.kotlinx.serialization.json)
 
-            implementation(libs.filekit.core)
-            implementation(libs.filekit.dialogs)
-            implementation(libs.filekit.dialogs.compose)
-
-            implementation(libs.pdfium)
-
-            implementation(libs.epub4kmp.core)
-            implementation(libs.okio)
-            implementation(libs.ksoup)
-
-            implementation(libs.coil.compose)
-
-            implementation(libs.androidx.datastore)
-            implementation(libs.androidx.datastore.preferences)
+            implementation(project(":core"))
+            implementation(project(":data:database"))
+            implementation(project(":data:storage"))
+            implementation(project(":feature:library"))
+            implementation(project(":feature:reader"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -99,15 +70,4 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
     }
-}
-
-dependencies {
-    androidRuntimeClasspath(libs.compose.uiTooling)
-    add("kspAndroid", libs.androidx.room3.compiler)
-    add("kspIosSimulatorArm64", libs.androidx.room3.compiler)
-    add("kspIosArm64", libs.androidx.room3.compiler)
-}
-
-room3 {
-    schemaDirectory("$projectDir/schemas")
 }
