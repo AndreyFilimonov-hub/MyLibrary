@@ -1,4 +1,4 @@
-package com.filimonov.mylibrary.feature.reader.domain.model
+package com.filimonov.mylibrary.core.domain.model
 
 data class ReadingProgress(
     val bookId: Long,

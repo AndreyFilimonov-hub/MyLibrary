@@ -33,6 +33,8 @@ kotlin {
                 implementation(libs.filekit.core)
                 implementation(libs.okio)
 
+                implementation(libs.koin.core)
+
                 implementation(project(":core"))
             }
         }

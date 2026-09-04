@@ -3,7 +3,7 @@ package com.filimonov.mylibrary.feature.reader.domain.repository
 import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import kotlinx.coroutines.flow.Flow
 
 interface ReaderRepository {

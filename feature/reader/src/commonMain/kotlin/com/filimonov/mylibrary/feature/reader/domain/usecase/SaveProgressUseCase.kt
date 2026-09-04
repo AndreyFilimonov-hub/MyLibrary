@@ -1,6 +1,6 @@
 package com.filimonov.mylibrary.feature.reader.domain.usecase
 
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.repository.ReaderRepository
 
 class SaveProgressUseCase(

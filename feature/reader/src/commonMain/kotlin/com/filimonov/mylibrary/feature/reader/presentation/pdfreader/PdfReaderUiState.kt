@@ -2,7 +2,7 @@ package com.filimonov.mylibrary.feature.reader.presentation.pdfreader
 
 import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 
 sealed interface PdfReaderUiState {

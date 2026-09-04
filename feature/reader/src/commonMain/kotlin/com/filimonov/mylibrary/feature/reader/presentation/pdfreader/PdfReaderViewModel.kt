@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.compose.ui.geometry.Rect
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase

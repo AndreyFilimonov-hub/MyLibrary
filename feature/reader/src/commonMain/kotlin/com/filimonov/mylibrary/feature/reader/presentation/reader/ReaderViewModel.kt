@@ -8,7 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookContentByIdUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase

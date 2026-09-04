@@ -20,8 +20,8 @@ val readerModule = module {
 
     single<ReaderRepository> {
         ReaderRepositoryImpl(
-            bookDao = get(),
-            bookReadingProgressDao = get(),
+            bookLocalDataSource = get(),
+            readingProgressLocalDataSource = get(),
             dataStore = get(),
             contentParser = get()
         )

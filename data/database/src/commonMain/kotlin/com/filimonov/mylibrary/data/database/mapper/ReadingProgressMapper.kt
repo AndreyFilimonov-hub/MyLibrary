@@ -1,7 +1,7 @@
-package com.filimonov.mylibrary.feature.reader.data.mapper
+package com.filimonov.mylibrary.data.database.mapper
 
 import com.filimonov.mylibrary.data.database.entity.ReadingProgressDbModel
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 
 fun ReadingProgressDbModel.toDomain() = ReadingProgress(
     bookId = bookId,

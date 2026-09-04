@@ -53,7 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.domain.model.Book
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchScreen
 import dev.nucleusframework.pdfium.PdfPage
 import dev.nucleusframework.pdfium.PdfReaderState
