@@ -5,7 +5,6 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.androidx.room3)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -25,10 +24,9 @@ kotlin {
     sourceSets {
         androidMain {
             dependencies {
-
+                implementation(libs.koin.android)
             }
         }
-
         commonMain {
             dependencies {
                 implementation(libs.kotlinx.coroutines.core)
@@ -41,13 +39,6 @@ kotlin {
                 implementation(project(":core"))
             }
         }
-
-        iosMain {
-            dependencies {
-
-            }
-        }
-
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
@@ -57,7 +48,6 @@ kotlin {
 }
 
 dependencies {
-    androidRuntimeClasspath(libs.compose.uiTooling)
     add("kspAndroid", libs.androidx.room3.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room3.compiler)
     add("kspIosArm64", libs.androidx.room3.compiler)

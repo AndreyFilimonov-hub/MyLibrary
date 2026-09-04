@@ -17,6 +17,9 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
+        androidResources {
+            enable = true
+        }
         compilerOptions {
             jvmTarget = JvmTarget.JVM_11
         }
@@ -28,7 +31,6 @@ kotlin {
                 implementation(libs.koin.android)
             }
         }
-
         commonMain {
             dependencies {
                 implementation(libs.compose.runtime)
@@ -49,11 +51,8 @@ kotlin {
                 implementation(libs.koin.compose.viewmodel)
 
                 implementation(libs.filekit.core)
-                implementation(libs.filekit.dialogs)
-                implementation(libs.filekit.dialogs.compose)
 
                 implementation(libs.pdfium)
-
                 implementation(libs.epub4kmp.core)
                 implementation(libs.okio)
                 implementation(libs.ksoup)
@@ -68,13 +67,6 @@ kotlin {
                 implementation(project(":data:storage"))
             }
         }
-
-        iosMain {
-            dependencies {
-
-            }
-        }
-
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)

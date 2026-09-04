@@ -17,6 +17,9 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
+        androidResources {
+            enable = true
+        }
         compilerOptions {
             jvmTarget = JvmTarget.JVM_11
         }
@@ -28,7 +31,6 @@ kotlin {
                 implementation(libs.pdfbox.android)
             }
         }
-
         commonMain {
             dependencies {
                 implementation(libs.compose.runtime)
@@ -45,10 +47,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
 
                 implementation(libs.filekit.core)
-                implementation(libs.filekit.dialogs)
                 implementation(libs.filekit.dialogs.compose)
-
-                implementation(libs.pdfium)
 
                 implementation(libs.epub4kmp.core)
                 implementation(libs.okio)
@@ -62,20 +61,11 @@ kotlin {
 
                 implementation(libs.coil.compose)
 
-                implementation(libs.androidx.sqlite.bundled) // посмотреть как выбросить ошибку чтоб убрать его
-
                 implementation(project(":core"))
                 implementation(project(":data:database"))
                 implementation(project(":data:storage"))
             }
         }
-
-        iosMain {
-            dependencies {
-
-            }
-        }
-
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)

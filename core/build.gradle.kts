@@ -16,21 +16,12 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
-        withHostTestBuilder {
-        }
-
         compilerOptions {
             jvmTarget = JvmTarget.JVM_11
         }
     }
 
     sourceSets {
-        androidMain {
-            dependencies {
-
-            }
-        }
-
         commonMain {
             dependencies {
                 implementation(libs.compose.runtime)
@@ -41,13 +32,6 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
-
-        iosMain {
-            dependencies {
-
-            }
-        }
-
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)

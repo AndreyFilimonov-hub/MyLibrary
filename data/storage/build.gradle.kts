@@ -25,7 +25,6 @@ kotlin {
                 implementation(libs.androidx.core.ktx)
             }
         }
-
         commonMain {
             dependencies {
                 implementation(libs.kotlinx.coroutines.core)
@@ -38,13 +37,6 @@ kotlin {
                 implementation(project(":core"))
             }
         }
-
-        iosMain {
-            dependencies {
-
-            }
-        }
-
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
