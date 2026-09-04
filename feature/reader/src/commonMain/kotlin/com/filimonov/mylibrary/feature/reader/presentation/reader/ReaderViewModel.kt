@@ -6,9 +6,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
-import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookContentByIdUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
@@ -18,7 +18,6 @@ import com.filimonov.mylibrary.feature.reader.presentation.search.NavigationTarg
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,8 +41,6 @@ class ReaderViewModel(
 
     private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Loading)
     val state = _state.asStateFlow()
-
-    private var lastProgress: ReadingProgress? = null
 
     private val searchQueryFlow = MutableStateFlow("")
 
@@ -83,7 +80,8 @@ class ReaderViewModel(
                 .filterNotNull()
                 .debounce(400)
                 .collectLatest { newSize ->
-                    val current = (_state.value as? ReaderUiState.Success)?.settings ?: return@collectLatest
+                    val current =
+                        (_state.value as? ReaderUiState.Success)?.settings ?: return@collectLatest
                     val newSettings =
                         current.copy(fontSize = newSize, lineHeight = (newSize * 1.5f).toInt())
                     updateSettings(newSettings)
@@ -152,7 +150,14 @@ class ReaderViewModel(
         val (chapterIndex, pageIndex) = currentPaginator.resolveGlobalPage(globalPageIndex)
             ?: return
         reduce { currentState ->
-            currentState.copy(pendingNavigation = NavigationTarget(chapterIndex, pageIndex, result?.matchStart, result?.matchEnd))
+            currentState.copy(
+                pendingNavigation = NavigationTarget(
+                    chapterIndex,
+                    pageIndex,
+                    result?.matchStart,
+                    result?.matchEnd
+                )
+            )
         }
     }
 
@@ -165,7 +170,6 @@ class ReaderViewModel(
     private fun onProgressChanged(progress: ReadingProgress) {
         viewModelScope.launch {
             reduce { currentState ->
-                lastProgress = progress
                 currentState.copy(restoredProgress = progress)
             }
             saveProgressUseCase(progress)
@@ -192,8 +196,16 @@ class ReaderViewModel(
     }
 
     private fun changeFontSize(delta: Int) {
-        fontSizeRequestState.value =
-            ((state.value as ReaderUiState.Success).settings.fontSize + delta).coerceIn(12, 32)
+        val state = state.value as? ReaderUiState.Success ?: return
+
+        val baseSize = state.previewFontSize ?: state.settings.fontSize
+        val newSize = (baseSize + delta).coerceIn(12, 32)
+
+        reduce { currentState ->
+            currentState.copy(previewFontSize = newSize)
+        }
+
+        fontSizeRequestState.value = newSize
     }
 
     private fun reduce(reducer: (ReaderUiState.Success) -> ReaderUiState.Success) {
@@ -230,11 +242,6 @@ class ReaderViewModel(
     override fun onCleared() {
         paginator?.cancel()
         paginator = null
-        lastProgress?.let { progress ->
-            viewModelScope.launch(NonCancellable) {
-                saveProgressUseCase(progress)
-            }
-        }
         super.onCleared()
     }
 }

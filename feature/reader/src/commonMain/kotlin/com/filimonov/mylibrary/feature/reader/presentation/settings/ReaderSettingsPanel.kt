@@ -58,6 +58,7 @@ private const val STEP = 2
 fun ReaderSettingsPanel(
     modifier: Modifier = Modifier,
     settings: ReaderSettings,
+    fontSize: Int,
     onSettingsChange: (ReaderSettings) -> Unit,
     onChangeFontSize: (Int) -> Unit
 ) {
@@ -73,7 +74,7 @@ fun ReaderSettingsPanel(
             horizontalArrangement = Arrangement.spacedBy(AppDimension.lg)
         ) {
             OutlinedIconButton(
-                enabled = settings.fontSize != FONTSIZE_MIN,
+                enabled = fontSize != FONTSIZE_MIN,
                 onClick = {
                     onChangeFontSize(-STEP)
                 }
@@ -85,12 +86,12 @@ fun ReaderSettingsPanel(
             }
             Text(
                 modifier = Modifier.widthIn(min = 48.dp),
-                text = "${settings.fontSize}",
+                text = "$fontSize",
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center
             )
             OutlinedIconButton(
-                enabled = settings.fontSize != FONTSIZE_MAX,
+                enabled = fontSize != FONTSIZE_MAX,
                 onClick = {
                     onChangeFontSize(STEP)
                 }

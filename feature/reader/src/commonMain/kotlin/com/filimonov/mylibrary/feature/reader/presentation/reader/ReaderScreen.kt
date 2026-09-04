@@ -241,6 +241,7 @@ fun ReaderScreen(
                         ModalBottomSheet(onDismissRequest = { showSettings = false }) {
                             ReaderSettingsPanel(
                                 settings = currentState.settings,
+                                fontSize = currentState.previewFontSize ?: currentState.settings.fontSize,
                                 onSettingsChange = { settings ->
                                     viewModel.processCommand(
                                         ReaderCommand.UpdateReaderSettings(
