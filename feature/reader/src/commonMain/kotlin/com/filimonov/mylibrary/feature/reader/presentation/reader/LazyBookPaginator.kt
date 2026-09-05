@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.filimonov.mylibrary.core.coroutine.PriorityTaskExecutor
 import com.filimonov.mylibrary.core.coroutine.TaskPriority
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
+import com.filimonov.mylibrary.feature.reader.presentation.reader.utils.textMeasurementDispatcher
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
@@ -61,6 +62,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlin.math.ceil
 
 class LazyBookPaginator(
@@ -97,42 +99,41 @@ class LazyBookPaginator(
     var selectedImage by mutableStateOf<ImageBitmap?>(null)
         private set
 
-    suspend fun countAllPagesInBackground() = coroutineScope {
-        val jobs = chapters.indices.map { chapterIndex ->
-            async {
+    suspend fun countAllPagesInBackground() {
+        for (chapterIndex in chapters.indices) {
+            _chapterPages.value[chapterIndex]?.let { pages ->
+                _pageCounts.update {
+                    it + (chapterIndex to pages.size)
+                }
+                continue
+            }
+            taskExecutor.execute(TaskPriority.BACKGROUND) {
                 _chapterPages.value[chapterIndex]?.let { pages ->
                     _pageCounts.update {
                         it + (chapterIndex to pages.size)
                     }
-                    return@async
+                    return@execute
                 }
-                taskExecutor.execute(TaskPriority.BACKGROUND) {
-                    _chapterPages.value[chapterIndex]?.let { pages ->
-                        _pageCounts.update {
-                            it + (chapterIndex to pages.size)
-                        }
-                        return@execute
-                    }
-                    val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
-                    val pages = paginateChapterGreedy(
-                        text = annotated,
-                        placeholders = placeholders,
-                        textMeasurer = textMeasurer,
-                        style = style,
-                        containerSize = containerSize
-                    )
+                val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
+                val pages = paginateChapterGreedy(
+                    text = annotated,
+                    placeholders = placeholders,
+                    textMeasurer = textMeasurer,
+                    style = style,
+                    containerSize = containerSize
+                )
 
-                    _chapterPages.update {
-                        it + (chapterIndex to pages)
-                    }
+                _chapterPages.update {
+                    it + (chapterIndex to pages)
+                }
 
-                    _pageCounts.update {
-                        it + (chapterIndex to pages.size)
-                    }
+                _pageCounts.update {
+                    it + (chapterIndex to pages.size)
                 }
             }
+            yield()
         }
-        jobs.awaitAll()
+
         isFullyCounted.value = true
     }
 
@@ -698,7 +699,7 @@ class LazyBookPaginator(
             }
 
             val result = textMeasurementMutex.withLock {
-                withContext(Dispatchers.Main.immediate) {
+                withContext(textMeasurementDispatcher) {
                     textMeasurer.measure(
                         text = windowText,
                         style = style,

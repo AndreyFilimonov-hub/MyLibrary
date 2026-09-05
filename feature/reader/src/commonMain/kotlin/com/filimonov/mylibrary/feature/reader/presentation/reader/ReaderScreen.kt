@@ -294,13 +294,15 @@ fun BookScreen(
         var displayedPosition by remember { mutableStateOf(CurrentPosition(0, 0)) }
 
         BoxWithConstraints(modifier = Modifier.weight(1f)) {
+            val density = LocalDensity.current
+
             val fullSize =
-                with(LocalDensity.current) { IntSize(maxWidth.roundToPx(), maxHeight.roundToPx()) }
+                with(density) { IntSize(maxWidth.roundToPx(), maxHeight.roundToPx()) }
 
             val horizontalPaddingPx =
-                with(LocalDensity.current) { AppDimension.xxl.toPx() * 2 }.toInt()
+                with(density) { AppDimension.xxl.toPx() * 2 }.toInt()
             val verticalPaddingPx =
-                with(LocalDensity.current) { AppDimension.sm.toPx() * 2 }.toInt()
+                with(density) { AppDimension.sm.toPx() * 2 }.toInt()
 
             val rawContainerSize = IntSize(
                 width = (fullSize.width - horizontalPaddingPx).coerceAtLeast(0),
@@ -321,8 +323,6 @@ fun BookScreen(
                 LoadingIndicator()
                 return@BoxWithConstraints
             }
-
-            val density = LocalDensity.current
 
             val paginator = remember(style, containerSize) {
                 getPaginator(chapters, style, containerSize, textMeasurer, density)
