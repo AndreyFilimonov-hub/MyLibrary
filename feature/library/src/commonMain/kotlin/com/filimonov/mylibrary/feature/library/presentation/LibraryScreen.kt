@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -243,7 +244,7 @@ private fun LibraryContent(
         ) {
             LibraryFilter.entries.forEach { filter ->
                 LibraryFilterChip(
-                    modifier = Modifier.Companion.weight(if (filter == LibraryFilter.READ) 0.4f else 0.3f),
+                    modifier = Modifier.weight(if (filter == LibraryFilter.READ) 0.4f else 0.3f),
                     filter = filter,
                     selected = selectedFilter == filter,
                     onClick = {
@@ -256,7 +257,7 @@ private fun LibraryContent(
             EmptyContent(filter = selectedFilter)
         } else {
             LazyColumn(
-                modifier = Modifier.Companion
+                modifier = Modifier
                     .weight(1f)
                     .padding(top = AppDimension.md),
                 contentPadding = PaddingValues(bottom = 108.dp),
@@ -397,11 +398,19 @@ fun SwipeToDelete(
             DeleteSwipeAnchor.Open at -revealWidth
         }
     }
-    val state = remember(isOpen, anchors) {
+    val state = remember(anchors) {
         AnchoredDraggableState(
-            initialValue = if (isOpen) DeleteSwipeAnchor.Open else DeleteSwipeAnchor.Closed,
+            initialValue = DeleteSwipeAnchor.Closed,
             anchors = anchors
         )
+    }
+
+    LaunchedEffect(isOpen) {
+        val target = if (isOpen) DeleteSwipeAnchor.Open else DeleteSwipeAnchor.Closed
+
+        if (target != state.currentValue) {
+            state.animateTo(target)
+        }
     }
 
     LaunchedEffect(state.currentValue) {
@@ -417,7 +426,7 @@ fun SwipeToDelete(
             .clip(RoundedCornerShape(AppDimension.md))
     ) {
         Box(
-            modifier = Modifier.Companion
+            modifier = Modifier
                 .matchParentSize()
                 .padding(horizontal = AppDimension.xxl)
                 .clip(RoundedCornerShape(AppDimension.md))
@@ -482,7 +491,7 @@ private fun BookItem(
             Spacer(modifier = Modifier.width(AppDimension.md))
 
             BookInfo(
-                modifier = Modifier.Companion.weight(1f),
+                modifier = Modifier.weight(1f),
                 book = book,
                 onToggleRead = onToggleRead,
                 onToggleFavorite = onToggleFavorite
@@ -505,12 +514,16 @@ private fun BookCover(
         tonalElevation = 2.dp
     ) {
         if (coverPath != null) {
-            AsyncImage(
-                modifier = Modifier.fillMaxSize(),
-                model = ImageRequest.Builder(LocalPlatformContext.current)
+            val context = LocalPlatformContext.current
+            val model = remember(coverPath, context) {
+                ImageRequest.Builder(context)
                     .data(coverPath)
                     .size(200)
-                    .build(),
+                    .build()
+            }
+            AsyncImage(
+                modifier = Modifier.fillMaxSize(),
+                model = model,
                 contentDescription = null,
                 contentScale = ContentScale.Crop
             )
@@ -545,7 +558,7 @@ private fun BookInfo(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.Companion.weight(1f))
+        Spacer(modifier = Modifier.weight(1f))
         BookStatus(
             book = book,
             onToggleRead = onToggleRead,
