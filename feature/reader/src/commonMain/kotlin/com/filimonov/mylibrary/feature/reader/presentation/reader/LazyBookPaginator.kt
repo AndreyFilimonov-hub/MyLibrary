@@ -130,15 +130,15 @@ class LazyBookPaginator(
     }
 
     fun cancel() {
-        scope.cancel()
-        taskExecutor.cancel()
-        _chapterPages.value = emptyMap()
-        _pageCounts.value = emptyMap()
         scope.launch {
             progressMutex.withLock {
                 inProgress.clear()
             }
         }
+        scope.cancel()
+        taskExecutor.cancel()
+        _chapterPages.value = emptyMap()
+        _pageCounts.value = emptyMap()
         inlineContentMap.clear()
         selectedImage = null
     }
