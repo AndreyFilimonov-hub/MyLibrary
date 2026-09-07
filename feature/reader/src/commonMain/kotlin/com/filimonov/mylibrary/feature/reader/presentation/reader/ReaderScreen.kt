@@ -323,14 +323,11 @@ fun BookScreen(
 
             LaunchedEffect(outerPagerState.settledPage, paginator) {
                 val chapterIndex = outerPagerState.settledPage
-                paginator.ensurePaginated(chapterIndex)
-                paginator.ensurePaginated(chapterIndex - 1)
-                paginator.ensurePaginated(chapterIndex + 1)
-                paginator.ensurePaginated(chapterIndex + 2)
+                paginator.prefetchAround(chapterIndex)
             }
 
             LaunchedEffect(paginator) {
-                paginator.countAllPagesInBackground()
+                paginator.startPagination(outerPagerState.settledPage)
                 paginator.isFullyCounted.collect { isFullyCounted ->
                     if (isFullyCounted) {
                         onPaginationFinished(paginator.totalPages())

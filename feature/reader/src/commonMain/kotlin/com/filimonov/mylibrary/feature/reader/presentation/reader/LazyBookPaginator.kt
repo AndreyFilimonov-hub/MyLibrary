@@ -50,10 +50,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,19 +74,20 @@ class LazyBookPaginator(
         private val textMeasurementMutex = Mutex()
     }
 
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val taskExecutor = PriorityTaskExecutor()
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    private val progressMutex = Mutex()
 
     private val _chapterPages = MutableStateFlow<Map<Int, List<AnnotatedString>>>(emptyMap())
+
     val chapterPages: StateFlow<Map<Int, List<AnnotatedString>>>
         get() = _chapterPages.asStateFlow()
 
     private val _pageCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
-
     private val _errors = MutableStateFlow<Map<Int, PaginationError>>(emptyMap())
-    val errors = _errors.asStateFlow()
 
-    private val progressMutex = Mutex()
+    val errors = _errors.asStateFlow()
     private val inProgress = mutableMapOf<Int, CompletableDeferred<List<AnnotatedString>>>()
 
     private val inlineContentMap = mutableMapOf<String, InlineTextContent>()
@@ -99,121 +97,50 @@ class LazyBookPaginator(
     var selectedImage by mutableStateOf<ImageBitmap?>(null)
         private set
 
-    suspend fun countAllPagesInBackground() {
-        for (chapterIndex in chapters.indices) {
-            _chapterPages.value[chapterIndex]?.let { pages ->
-                _pageCounts.update {
-                    it + (chapterIndex to pages.size)
-                }
-                continue
-            }
-            taskExecutor.execute(TaskPriority.BACKGROUND) {
-                _chapterPages.value[chapterIndex]?.let { pages ->
-                    _pageCounts.update {
-                        it + (chapterIndex to pages.size)
-                    }
-                    return@execute
-                }
-                val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
-                val pages = paginateChapterGreedy(
-                    text = annotated,
-                    placeholders = placeholders,
-                    textMeasurer = textMeasurer,
-                    style = style,
-                    containerSize = containerSize
-                )
+    private var estimatedCharsPerPage = 3_000
 
-                _chapterPages.update {
-                    it + (chapterIndex to pages)
-                }
+    private var isBackgroundCountingStarted = false
 
-                _pageCounts.update {
-                    it + (chapterIndex to pages.size)
-                }
-            }
-            yield()
+    fun startPagination(initialChapterIndex: Int) {
+        scope.launch {
+            preloadInitialChapters(initialChapterIndex)
+            countAllPagesInBackground()
         }
+    }
 
-        isFullyCounted.value = true
+    fun prefetchAround(chapterIndex: Int) {
+        listOf(
+            chapterIndex,
+            chapterIndex - 1,
+            chapterIndex + 1,
+            chapterIndex + 2,
+        ).forEach(::ensurePaginated)
     }
 
     fun getInlineContent(): Map<String, InlineTextContent> {
         return inlineContentMap.toMap()
     }
 
-    fun ensurePaginated(chapterIndex: Int) {
-        if (chapterIndex !in chapters.indices) return
-        if (_chapterPages.value.containsKey(chapterIndex)) {
-            return
-        }
-        scope.launch {
-            try {
-                ensurePaginatedAwait(chapterIndex)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
-                _errors.update {
-                    it + (chapterIndex to PaginationError.CannotBuildPage)
-                }
-            }
-        }
+    fun onImageClicked(bitmap: ImageBitmap) {
+        selectedImage = bitmap
     }
 
-    suspend fun ensurePaginatedAwait(chapterIndex: Int): List<AnnotatedString> {
-        require(chapterIndex in chapters.indices)
-        _chapterPages.value[chapterIndex]?.let {
-            return it
-        }
-        val deferred = progressMutex.withLock {
-            _chapterPages.value[chapterIndex]?.let {
-                return@withLock CompletableDeferred(it)
-            }
-            inProgress[chapterIndex]?.let {
-                return@withLock it
-            }
-            CompletableDeferred<List<AnnotatedString>>().also {
-                inProgress[chapterIndex] = it
+    fun clearSelectedImage() {
+        selectedImage = null
+    }
+
+    fun cancel() {
+        scope.cancel()
+        taskExecutor.cancel()
+        _chapterPages.value = emptyMap()
+        _pageCounts.value = emptyMap()
+        scope.launch {
+            progressMutex.withLock {
+                inProgress.clear()
             }
         }
-
-        if (deferred.isCompleted) {
-            return deferred.await()
-        }
-
-        taskExecutor.execute(TaskPriority.HIGH) {
-            try {
-                _chapterPages.value[chapterIndex]?.let { pages ->
-                    deferred.complete(pages)
-                    return@execute
-                }
-                val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
-                val pages = paginateChapterGreedy(
-                    text = annotated,
-                    placeholders = placeholders,
-                    textMeasurer = textMeasurer,
-                    style = style,
-                    containerSize = containerSize
-                )
-
-                _chapterPages.update {
-                    it + (chapterIndex to pages)
-                }
-                _pageCounts.update {
-                    it + (chapterIndex to pages.size)
-                }
-
-                deferred.complete(pages)
-            } catch (e: Throwable) {
-                deferred.completeExceptionally(e)
-                throw e
-            } finally {
-                progressMutex.withLock {
-                    inProgress.remove(chapterIndex)
-                }
-            }
-        }
-
-        return deferred.await()
+        inlineContentMap.clear()
+        selectedImage = null
     }
 
     fun retry(chapterIndex: Int) {
@@ -309,6 +236,120 @@ class LazyBookPaginator(
             acc += count
         }
         return chapters.lastIndex to 0
+    }
+
+    private fun ensurePaginated(chapterIndex: Int) {
+        if (chapterIndex !in chapters.indices) return
+        if (_chapterPages.value.containsKey(chapterIndex)) {
+            return
+        }
+        scope.launch {
+            try {
+                ensurePaginatedAwait(chapterIndex, TaskPriority.HIGH)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                _errors.update {
+                    it + (chapterIndex to PaginationError.CannotBuildPage)
+                }
+            }
+        }
+    }
+
+    private suspend fun ensurePaginatedAwait(
+        chapterIndex: Int,
+        priority: TaskPriority
+    ): List<AnnotatedString> {
+        require(chapterIndex in chapters.indices)
+        _chapterPages.value[chapterIndex]?.let {
+            return it
+        }
+        val deferred = progressMutex.withLock {
+            _chapterPages.value[chapterIndex]?.let {
+                return@withLock CompletableDeferred(it)
+            }
+            inProgress[chapterIndex]?.let {
+                return@withLock it
+            }
+            CompletableDeferred<List<AnnotatedString>>().also {
+                inProgress[chapterIndex] = it
+            }
+        }
+
+        if (deferred.isCompleted) {
+            return deferred.await()
+        }
+
+        taskExecutor.execute(priority) {
+            try {
+                _chapterPages.value[chapterIndex]?.let { pages ->
+                    deferred.complete(pages)
+                    return@execute
+                }
+                val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
+                val pages = paginateChapterGreedy(
+                    text = annotated,
+                    placeholders = placeholders,
+                    textMeasurer = textMeasurer,
+                    style = style,
+                    containerSize = containerSize
+                )
+
+                _chapterPages.update {
+                    it + (chapterIndex to pages)
+                }
+                _pageCounts.update {
+                    it + (chapterIndex to pages.size)
+                }
+
+                deferred.complete(pages)
+            } catch (e: Throwable) {
+                deferred.completeExceptionally(e)
+                throw e
+            } finally {
+                progressMutex.withLock {
+                    inProgress.remove(chapterIndex)
+                }
+            }
+        }
+
+        return deferred.await()
+    }
+
+    private suspend fun countAllPagesInBackground() {
+        if (isBackgroundCountingStarted) return
+        isBackgroundCountingStarted = true
+        for (chapterIndex in chapters.indices) {
+            try {
+                _chapterPages.value[chapterIndex]?.let { pages ->
+                    _pageCounts.update {
+                        it + (chapterIndex to pages.size)
+                    }
+                    continue
+                }
+                ensurePaginatedAwait(chapterIndex, TaskPriority.BACKGROUND)
+                yield()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                _errors.update {
+                    it + (chapterIndex to PaginationError.CannotBuildPage)
+                }
+            }
+        }
+
+        isFullyCounted.value = true
+    }
+
+    private suspend fun preloadInitialChapters(chapterIndex: Int) {
+        listOf(
+            chapterIndex,
+            chapterIndex - 1,
+            chapterIndex + 1,
+            chapterIndex + 2
+        )
+            .filter { it in chapters.indices }
+            .forEach { index -> ensurePaginatedAwait(index, TaskPriority.HIGH) }
     }
 
     private fun chapterToAnnotatedString(chapter: Chapter): Pair<AnnotatedString, List<AnnotatedString.Range<Placeholder>>> {
@@ -448,7 +489,8 @@ class LazyBookPaginator(
                         val isImageParagraph =
                             tag == "p" && node.selectFirst("img, image") != null
 
-                        val isParagraph = (tag == "p" && !isEmptyLine && !isImageParagraph) || isSimpleDiv
+                        val isParagraph =
+                            (tag == "p" && !isEmptyLine && !isImageParagraph) || isSimpleDiv
 
                         when {
                             isImageDiv -> {
@@ -644,7 +686,7 @@ class LazyBookPaginator(
 
         var startIndex = 0
 
-        var windowSize = 12_000
+        var windowSize = estimatedCharsPerPage
 
         val minWindowSize = 2_000
         val maxWindowSize = 50_000
@@ -734,7 +776,11 @@ class LazyBookPaginator(
 
                 val absoluteEnd = (startIndex + end).coerceAtMost(textLength)
 
-                pages += text.subSequence(startIndex, absoluteEnd)
+                pages += pageSlice(
+                    text = text,
+                    startIndex = startIndex,
+                    endIndex = absoluteEnd
+                )
 
                 startIndex = absoluteEnd
 
@@ -772,9 +818,20 @@ class LazyBookPaginator(
 
             safeEnd = safeEnd.coerceIn(startIndex + 1, textLength)
 
-            pages += text.subSequence(startIndex, safeEnd)
+            pages += pageSlice(
+                text = text,
+                startIndex = startIndex,
+                endIndex = safeEnd
+            )
 
             val consumed = safeEnd - startIndex
+
+            if (safeEnd < textLength) {
+                estimatedCharsPerPage = (((estimatedCharsPerPage * 3) + consumed) / 4).coerceIn(
+                    minWindowSize,
+                    maxWindowSize
+                )
+            }
 
             startIndex = safeEnd
 
@@ -796,6 +853,43 @@ class LazyBookPaginator(
         return pages
     }
 
+    private fun pageSlice(
+        text: AnnotatedString,
+        startIndex: Int,
+        endIndex: Int
+    ): AnnotatedString {
+        val page = text.subSequence(startIndex, endIndex)
+        val continuesParagraph = text.paragraphStyles.any { range ->
+            range.start < startIndex && startIndex < range.end
+        }
+
+        if (!continuesParagraph) return page
+
+        val adjustedPage = AnnotatedString(
+            text = page.text,
+            spanStyles = page.spanStyles,
+            paragraphStyles = page.paragraphStyles.map { range ->
+                if (range.start == 0) {
+                    range.copy(item = range.item.copy(textIndent = TextIndent(0.sp)))
+                } else {
+                    range
+                }
+            }
+        )
+
+        return buildAnnotatedString {
+            append(adjustedPage)
+            page.getStringAnnotations(0, page.length).forEach { range ->
+                addStringAnnotation(
+                    tag = range.tag,
+                    annotation = range.item,
+                    start = range.start,
+                    end = range.end
+                )
+            }
+        }
+    }
+
     private fun calculatePlaceholderSize(bitmap: ImageBitmap): Pair<TextUnit, TextUnit> {
         val aspectRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
         val maxContainerWidthPx = containerSize.width.toFloat()
@@ -809,25 +903,4 @@ class LazyBookPaginator(
         return targetWidthSp to targetHeightSp
     }
 
-    fun onImageClicked(bitmap: ImageBitmap) {
-        selectedImage = bitmap
-    }
-
-    fun clearSelectedImage() {
-        selectedImage = null
-    }
-
-    fun cancel() {
-        scope.cancel()
-        taskExecutor.cancel()
-        _chapterPages.value = emptyMap()
-        _pageCounts.value = emptyMap()
-        scope.launch {
-            progressMutex.withLock {
-                inProgress.clear()
-            }
-        }
-        inlineContentMap.clear()
-        selectedImage = null
-    }
 }
