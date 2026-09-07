@@ -1,25 +1,33 @@
-package com.filimonov.mylibrary.feature.reader.presentation.settings
+﻿package com.filimonov.mylibrary.feature.reader.presentation.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
@@ -27,28 +35,26 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
-import mylibrary.feature.reader.generated.resources.Res
-import mylibrary.feature.reader.generated.resources.brightness
-import mylibrary.feature.reader.generated.resources.decrease_font_size
-import mylibrary.feature.reader.generated.resources.font_size
-import mylibrary.feature.reader.generated.resources.increase_font_size
-import mylibrary.feature.reader.generated.resources.reading_mode
-import mylibrary.feature.reader.generated.resources.reading_mode_horizontal
-import mylibrary.feature.reader.generated.resources.reading_mode_vertical
-import mylibrary.feature.reader.generated.resources.theme
+import com.filimonov.mylibrary.feature.reader.presentation.reader.mapper.colors
+import mylibrary.feature.reader.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToInt
 
 private const val FONTSIZE_MAX = 32
 private const val FONTSIZE_MIN = 12
@@ -59,138 +65,318 @@ fun ReaderSettingsPanel(
     modifier: Modifier = Modifier,
     settings: ReaderSettings,
     fontSize: Int,
+    brightness: Float,
     onSettingsChange: (ReaderSettings) -> Unit,
-    onChangeFontSize: (Int) -> Unit
+    onFontSizeChange: (Int) -> Unit,
+    onBrightnessChange: (Float) -> Unit
+) {
+    SettingsLayout(modifier) {
+        FontSizeSetting(
+            fontSize = fontSize,
+            onFontSizeChange = onFontSizeChange
+        )
+        ReadingModeSetting(
+            settings = settings,
+            onReadingModeChange = onSettingsChange
+        )
+        BrightnessSetting(
+            brightness = brightness,
+            onBrightnessChange = onBrightnessChange,
+        )
+        ThemeSetting(
+            settings = settings,
+            onThemeChange = onSettingsChange
+        )
+    }
+}
+
+@Composable
+internal fun SettingsLayout(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = AppDimension.xl, vertical = AppDimension.md)
+        modifier = modifier.fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(stringResource(Res.string.font_size), style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(AppDimension.sm))
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(AppDimension.lg)
+        Text(
+            text = stringResource(Res.string.reader_settings_title),
+            style = MaterialTheme.typography.headlineMedium
+        )
+        Text(
+            text = stringResource(Res.string.reader_settings_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(4.dp))
+        content()
+    }
+}
+
+@Composable
+private fun SettingsSection(
+    modifier: Modifier = Modifier,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = modifier.fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedIconButton(
-                enabled = fontSize != FONTSIZE_MIN,
-                onClick = {
-                    onChangeFontSize(-STEP)
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Remove,
-                    contentDescription = stringResource(Res.string.decrease_font_size)
-                )
-            }
             Text(
-                modifier = Modifier.widthIn(min = 48.dp),
-                text = "$fontSize",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
             )
-            OutlinedIconButton(
-                enabled = fontSize != FONTSIZE_MAX,
-                onClick = {
-                    onChangeFontSize(STEP)
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(Res.string.increase_font_size)
-                )
-            }
+            content()
         }
+    }
+}
 
-        Spacer(Modifier.height(AppDimension.xxl))
-        HorizontalDivider()
-        Spacer(Modifier.height(AppDimension.xxl))
-
-        Text(stringResource(Res.string.reading_mode), style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(AppDimension.sm))
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            ReadingMode.entries.forEachIndexed { index, mode ->
-                SegmentedButton(
-                    selected = settings.readingMode == mode,
-                    onClick = { onSettingsChange(settings.copy(readingMode = mode)) },
-                    shape = SegmentedButtonDefaults.itemShape(index, ReadingMode.entries.size)
+@Composable
+private fun FontSizeSetting(
+    modifier: Modifier = Modifier,
+    fontSize: Int,
+    onFontSizeChange: (Int) -> Unit
+) {
+    SettingsSection(
+        title = stringResource(Res.string.font_size)
+    ) {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Aa",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedIconButton(
+                    enabled = fontSize > FONTSIZE_MIN,
+                    onClick = { onFontSizeChange(-STEP) }
                 ) {
-                    Text(
-                        text = when (mode) {
-                            ReadingMode.HORIZONTAL -> stringResource(Res.string.reading_mode_horizontal)
-                            ReadingMode.VERTICAL -> stringResource(Res.string.reading_mode_vertical)
-                        }
+                    Icon(
+                        imageVector = Icons.Default.Remove,
+                        contentDescription = stringResource(Res.string.decrease_font_size)
+                    )
+                }
+                Text(
+                    text = "$fontSize",
+                    modifier = Modifier.widthIn(min = 32.dp),
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
+                OutlinedIconButton(
+                    enabled = fontSize < FONTSIZE_MAX,
+                    onClick = { onFontSizeChange(STEP) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(Res.string.increase_font_size)
                     )
                 }
             }
         }
+    }
+}
 
-        Spacer(Modifier.height(AppDimension.xxl))
-        HorizontalDivider()
-        Spacer(Modifier.height(AppDimension.xxl))
+@Composable
+internal fun ReadingModeSetting(
+    modifier: Modifier = Modifier,
+    settings: ReaderSettings,
+    onReadingModeChange: (ReaderSettings) -> Unit
+) {
+    SettingsSection(
+        modifier = modifier,
+        title = stringResource(Res.string.reading_mode)
+    ) {
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            ReadingMode.entries.forEachIndexed { index, mode ->
+                SegmentedButton(
+                    selected = settings.readingMode == mode,
+                    onClick = { onReadingModeChange(settings.copy(readingMode = mode)) },
+                    shape = SegmentedButtonDefaults.itemShape(index, ReadingMode.entries.size),
+                    colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer),
+                    icon = {}
+                ) {
+                    Text(
+                        text = stringResource(
+                            when (mode) {
+                                ReadingMode.HORIZONTAL -> Res.string.reading_mode_horizontal
+                                ReadingMode.VERTICAL -> Res.string.reading_mode_vertical
+                            }
+                        ),
+                        style = MaterialTheme.typography.labelMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
 
-        Text(stringResource(Res.string.brightness), style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(AppDimension.sm))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+@Composable
+internal fun BrightnessSetting(
+    modifier: Modifier = Modifier,
+    brightness: Float,
+    onBrightnessChange: (Float) -> Unit
+) {
+    val brightnessLabel = stringResource(Res.string.brightness)
+    SettingsSection(
+        modifier = modifier,
+        title = brightnessLabel
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Icon(
-                modifier = Modifier.size(AppDimension.xl),
                 imageVector = Icons.Default.Brightness6,
-                contentDescription = null
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
             )
             Slider(
-                modifier = Modifier.weight(1f).padding(horizontal = AppDimension.sm),
-                value = settings.brightness,
-                onValueChange = { onSettingsChange(settings.copy(brightness = it)) },
+                modifier = Modifier.weight(1f).semantics { contentDescription = brightnessLabel },
+                value = brightness,
+                track = { sliderState ->
+                    SliderDefaults.Track(
+                        sliderState = sliderState,
+                        modifier = Modifier.height(8.dp),
+                        thumbTrackGapSize = 0.dp,
+                        drawStopIndicator = {}
+                    )
+                },
+                thumb = { _ ->
+                    Box(
+                        modifier = Modifier.size(16.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    )
+                },
+                onValueChange = { brightness ->
+                    onBrightnessChange(brightness)
+                },
                 valueRange = 0.1f..1f
             )
             Icon(
-                modifier = Modifier.size(AppDimension.xl),
                 imageVector = Icons.Default.BrightnessHigh,
-                contentDescription = null
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = stringResource(
+                    Res.string.brightness_percent,
+                    (brightness * 100).roundToInt()
+                ),
+                modifier = Modifier.widthIn(min = 44.dp),
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.End
             )
         }
+    }
+}
 
-        Spacer(Modifier.height(AppDimension.xxl))
-        HorizontalDivider()
-        Spacer(Modifier.height(AppDimension.xxl))
-
-        Text(stringResource(Res.string.theme), style = MaterialTheme.typography.labelLarge)
-        Spacer(Modifier.height(AppDimension.md))
-        Row(horizontalArrangement = Arrangement.spacedBy(AppDimension.lg)) {
-            ReaderTheme.entries.forEach { theme ->
-                ThemeSwatch(
-                    theme = theme,
-                    isSelected = settings.theme == theme,
-                    onClick = { onSettingsChange(settings.copy(theme = theme)) }
-                )
+@Composable
+private fun ThemeSetting(
+    modifier: Modifier = Modifier,
+    settings: ReaderSettings,
+    onThemeChange: (ReaderSettings) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(
+            modifier = modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                modifier = Modifier.padding(top = 16.dp, start = 16.dp),
+                text = stringResource(Res.string.theme),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            LazyRow(
+                modifier = Modifier.fillMaxWidth()
+                    .selectableGroup()
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                items(ReaderTheme.entries, key = { it }) { theme ->
+                    ThemeSwatch(
+                        modifier = Modifier.width(88.dp),
+                        theme = theme,
+                        isSelected = settings.theme == theme,
+                        onClick = { onThemeChange(settings.copy(theme = theme)) }
+                    )
+                }
             }
         }
-
-        Spacer(Modifier.height(AppDimension.lg))
     }
 }
 
 @Composable
 private fun ThemeSwatch(
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
     theme: ReaderTheme,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    Box(
-        modifier = modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(theme.background)
-            .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f),
-                shape = CircleShape
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+    val label = stringResource(
+        when (theme) {
+            ReaderTheme.System -> Res.string.theme_system
+            ReaderTheme.Light -> Res.string.theme_light
+            ReaderTheme.Sepia -> Res.string.theme_sepia
+            ReaderTheme.Dark -> Res.string.theme_dark
+            ReaderTheme.Black -> Res.string.theme_black
+        }
+    )
+    val colors = theme.colors()
+    Column(
+        modifier = modifier.clip(RoundedCornerShape(12.dp))
+            .selectable(selected = isSelected, role = Role.RadioButton, onClick = onClick)
+            .padding(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Aa", color = theme.text, style = MaterialTheme.typography.labelMedium)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = colors.background,
+            border = BorderStroke(
+                width = if (isSelected) 3.dp else 1.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+            )
+        ) {
+            Text(
+                text = "Aa",
+                modifier = Modifier.padding(vertical = 14.dp),
+                color = colors.text,
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center
+            )
+        }
+        Text(
+            text = label,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.labelSmall,
+            textAlign = TextAlign.Center,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

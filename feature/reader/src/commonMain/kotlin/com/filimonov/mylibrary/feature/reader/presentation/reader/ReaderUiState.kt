@@ -13,7 +13,8 @@ sealed interface ReaderUiState {
     data class Success(
         val chapters: List<Chapter>,
         val settings: ReaderSettings = ReaderSettings(),
-        val previewFontSize: Int? = null,
+        val previewFontSize: Int,
+        val previewBrightness: Float,
         val restoredProgress: ReadingProgress? = null,
         val totalPages: Int? = null,
         val isSearchAvailable: Boolean = false,

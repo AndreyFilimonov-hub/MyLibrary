@@ -23,4 +23,6 @@ sealed interface ReaderCommand {
     data class UpdateReaderSettings(val settings: ReaderSettings): ReaderCommand
 
     data class ChangeFontSize(val fontSize: Int): ReaderCommand
+
+    data class ChangeBrightness(val brightness: Float): ReaderCommand
 }

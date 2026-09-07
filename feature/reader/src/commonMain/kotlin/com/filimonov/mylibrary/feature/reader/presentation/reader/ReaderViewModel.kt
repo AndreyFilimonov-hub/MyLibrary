@@ -45,6 +45,7 @@ class ReaderViewModel(
     private val searchQueryFlow = MutableStateFlow("")
 
     private val fontSizeRequestState = MutableStateFlow<Int?>(null)
+    private val brightnessState = MutableStateFlow<Float?>(null)
 
     private var paginator: LazyBookPaginator? = null
 
@@ -52,6 +53,45 @@ class ReaderViewModel(
         loadBook()
         observeFontSizeChanges()
         observeSearchQuery()
+        observeBrightnessChanges()
+    }
+
+    fun processCommand(command: ReaderCommand) {
+        when (command) {
+            is ReaderCommand.ChangeFontSize -> changeFontSize(command.fontSize)
+            ReaderCommand.ClearSearchQuery -> clearSearch()
+            is ReaderCommand.InputQuery -> onSearchQueryChanged(command.query)
+            is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page, null)
+            ReaderCommand.OnNavigationHandled -> onNavigationHandled()
+            is ReaderCommand.OnPaginationFinished -> onPaginationFinished(command.totalPages)
+            is ReaderCommand.SaveProgress -> onProgressChanged(command.progress)
+            is ReaderCommand.SelectSearchResult -> onSearchResultSelected(command.searchResult)
+            is ReaderCommand.UpdateReaderSettings -> updateSettings(command.settings)
+            is ReaderCommand.ChangeBrightness -> changeBrightness(command.brightness)
+        }
+    }
+
+    fun getOrCreatePaginator(
+        chapters: List<Chapter>,
+        style: TextStyle,
+        containerSize: IntSize,
+        textMeasurer: TextMeasurer,
+        density: Density
+    ): LazyBookPaginator {
+        val current = paginator
+        if (current != null && current.style == style && current.containerSize == containerSize) return current
+
+        current?.cancel()
+
+        return LazyBookPaginator(
+            chapters = chapters,
+            style = style,
+            containerSize = containerSize,
+            textMeasurer = textMeasurer,
+            density = density
+        ).also { newPaginator ->
+            paginator = newPaginator
+        }
     }
 
     private fun loadBook() {
@@ -68,7 +108,9 @@ class ReaderViewModel(
                 ReaderUiState.Success(
                     chapters = chapters,
                     settings = settings,
-                    restoredProgress = progress
+                    restoredProgress = progress,
+                    previewFontSize = settings.fontSize,
+                    previewBrightness = settings.brightness
                 )
             }
         }
@@ -84,6 +126,21 @@ class ReaderViewModel(
                         (_state.value as? ReaderUiState.Success)?.settings ?: return@collectLatest
                     val newSettings =
                         current.copy(fontSize = newSize, lineHeight = (newSize * 1.5f).toInt())
+                    updateSettings(newSettings)
+                }
+        }
+    }
+
+    private fun observeBrightnessChanges() {
+        viewModelScope.launch {
+            brightnessState
+                .filterNotNull()
+                .debounce(400)
+                .collectLatest { newBrightness ->
+                    val current =
+                        (_state.value as? ReaderUiState.Success)?.settings ?: return@collectLatest
+                    val newSettings =
+                        current.copy(brightness = newBrightness)
                     updateSettings(newSettings)
                 }
         }
@@ -106,20 +163,6 @@ class ReaderViewModel(
                         )
                     }
                 }
-        }
-    }
-
-    fun processCommand(command: ReaderCommand) {
-        when (command) {
-            is ReaderCommand.ChangeFontSize -> changeFontSize(command.fontSize)
-            ReaderCommand.ClearSearchQuery -> clearSearch()
-            is ReaderCommand.InputQuery -> onSearchQueryChanged(command.query)
-            is ReaderCommand.JumpToPageNumber -> jumpToPageNumber(command.page, null)
-            ReaderCommand.OnNavigationHandled -> onNavigationHandled()
-            is ReaderCommand.OnPaginationFinished -> onPaginationFinished(command.totalPages)
-            is ReaderCommand.SaveProgress -> onProgressChanged(command.progress)
-            is ReaderCommand.SelectSearchResult -> onSearchResultSelected(command.searchResult)
-            is ReaderCommand.UpdateReaderSettings -> updateSettings(command.settings)
         }
     }
 
@@ -198,7 +241,7 @@ class ReaderViewModel(
     private fun changeFontSize(delta: Int) {
         val state = state.value as? ReaderUiState.Success ?: return
 
-        val baseSize = state.previewFontSize ?: state.settings.fontSize
+        val baseSize = state.previewFontSize
         val newSize = (baseSize + delta).coerceIn(12, 32)
 
         reduce { currentState ->
@@ -208,34 +251,19 @@ class ReaderViewModel(
         fontSizeRequestState.value = newSize
     }
 
+    private fun changeBrightness(value: Float) {
+        reduce { currentState ->
+            currentState.copy(previewBrightness = value)
+        }
+
+        brightnessState.value = value
+    }
+
     private fun reduce(reducer: (ReaderUiState.Success) -> ReaderUiState.Success) {
         _state.update { previousState ->
             if (previousState is ReaderUiState.Success) {
                 reducer(previousState)
             } else previousState
-        }
-    }
-
-    fun getOrCreatePaginator(
-        chapters: List<Chapter>,
-        style: TextStyle,
-        containerSize: IntSize,
-        textMeasurer: TextMeasurer,
-        density: Density
-    ): LazyBookPaginator {
-        val current = paginator
-        if (current != null && current.style == style && current.containerSize == containerSize) return current
-
-        current?.cancel()
-
-        return LazyBookPaginator(
-            chapters = chapters,
-            style = style,
-            containerSize = containerSize,
-            textMeasurer = textMeasurer,
-            density = density
-        ).also { newPaginator ->
-            paginator = newPaginator
         }
     }
 
