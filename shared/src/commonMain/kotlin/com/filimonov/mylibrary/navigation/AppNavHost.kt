@@ -1,6 +1,5 @@
 package com.filimonov.mylibrary.navigation
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,36 +17,35 @@ fun AppNavHost() {
 
     val navController = rememberNavController()
 
-    MaterialTheme {
-        NavHost(
-            navController,
-            LibraryRoute
-        ) {
-            composable<LibraryRoute> {
-                LibraryScreen(
-                    onBookClick = { bookId, bookTitle, bookFormat ->
-                        navController.navigate(ReaderRoute(bookId, bookTitle, bookFormat.name))
+    NavHost(
+        navController,
+        LibraryRoute
+    ) {
+        composable<LibraryRoute> {
+            LibraryScreen(
+                onBookClick = { bookId, bookTitle, bookFormat ->
+                    navController.navigate(ReaderRoute(bookId, bookTitle, bookFormat.name))
+                }
+            )
+        }
+        composable<ReaderRoute> { entry ->
+            val route = entry.toRoute<ReaderRoute>()
+            val bookFormat = BookFormat.valueOf(route.bookFormat)
+            when (bookFormat) {
+                BookFormat.EPUB,
+                BookFormat.FB2 -> ReaderScreen(
+                    bookId = route.bookId,
+                    bookTitle = route.bookTitle,
+                    onBack = {
+                        navController.popBackStack()
                     }
                 )
-            }
-            composable<ReaderRoute> { entry ->
-                val route = entry.toRoute<ReaderRoute>()
-                val bookFormat = BookFormat.valueOf(route.bookFormat)
-                when (bookFormat) {
-                    BookFormat.EPUB,
-                    BookFormat.FB2 -> ReaderScreen(
-                        bookId = route.bookId,
-                        bookTitle = route.bookTitle,
-                        onBack = {
-                            navController.popBackStack()
-                        }
-                    )
 
-                    BookFormat.PDF -> PdfReaderScreen(
-                        bookId = route.bookId,
-                        bookTitle = route.bookTitle
-                    )
-                }
+                BookFormat.PDF -> PdfReaderScreen(
+                    bookId = route.bookId,
+                    bookTitle = route.bookTitle,
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }
