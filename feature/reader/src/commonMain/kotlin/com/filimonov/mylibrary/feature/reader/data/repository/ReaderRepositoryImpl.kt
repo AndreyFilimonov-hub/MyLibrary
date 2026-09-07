@@ -31,7 +31,7 @@ class ReaderRepositoryImpl(
         val LINE_HEIGHT = intPreferencesKey("line_height")
         val READING_MODE = stringPreferencesKey("reading_mode")
         val BRIGHTNESS = floatPreferencesKey("brightness")
-        val THEME = stringPreferencesKey("theme ")
+        val THEME = stringPreferencesKey("theme")
     }
 
     override suspend fun getBookById(bookId: Long): Book {
@@ -47,12 +47,12 @@ class ReaderRepositoryImpl(
     override fun getReaderSettings(): Flow<ReaderSettings> {
         return dataStore.data.map { prefs ->
             ReaderSettings(
-                fontSize = prefs[KEYS.FONT_SIZE] ?: 18,
-                lineHeight = prefs[KEYS.LINE_HEIGHT] ?: 24,
+                fontSize = prefs[KEYS.FONT_SIZE] ?: 14,
+                lineHeight = prefs[KEYS.LINE_HEIGHT] ?: 21,
                 readingMode = prefs[KEYS.READING_MODE]?.let { ReadingMode.valueOf(it) }
                     ?: ReadingMode.HORIZONTAL,
-                brightness = prefs[KEYS.BRIGHTNESS] ?: 100f,
-                theme = prefs[KEYS.THEME]?.let { ReaderTheme.valueOf(it) } ?: ReaderTheme.Light
+                brightness = prefs[KEYS.BRIGHTNESS] ?: 1f,
+                theme = prefs[KEYS.THEME]?.let { ReaderTheme.valueOf(it) } ?: ReaderTheme.System
             )
         }
     }

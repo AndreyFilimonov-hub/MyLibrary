@@ -22,9 +22,14 @@
 
     <!-- Search -->
 
+
     <string name="search_tab">Поиск</string>
     <string name="go_to_page_tab">Переход на страницу</string>
 
+    <string name="search_hint">Введите слово или фразу, чтобы найти нужный фрагмент книги.</string>
+    <string name="search_empty_hint">Попробуйте другое слово или более короткий запрос.</string>
+    <string name="search_results_count">Найдено: %1$d</string>
+    <string name="close_search">Закрыть поиск</string>
     <string name="search_book">Поиск по книге…</string>
     <string name="clear_search">Очистить поиск</string>
     <string name="nothing_found">Ничего не найдено</string>
@@ -35,6 +40,17 @@
     <string name="go">Перейти</string>
 
     <!-- Reader settings -->
+    <string name="reader_settings_title">Комфортное чтение</string>
+    <string name="reader_settings_subtitle">Настройте книгу под себя</string>
+    <string name="back_to_library">Вернуться в библиотеку</string>
+
+    <string name="theme_system">Системная</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_sepia">Сепия</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="theme_black">Чёрная</string>
+
+    <string name="brightness_percent">%1$d%</string>
 
     <string name="font_size">Размер шрифта</string>
     <string name="decrease_font_size">Уменьшить шрифт</string>

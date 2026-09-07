@@ -12,6 +12,7 @@ sealed interface PdfReaderUiState {
     data class Success(
         val book: Book,
         val settings: ReaderSettings,
+        val previewBrightness: Float,
         val restoredProgress: ReadingProgress?,
         val searchQuery: String = "",
         val searchResults: List<SearchResult> = emptyList(),

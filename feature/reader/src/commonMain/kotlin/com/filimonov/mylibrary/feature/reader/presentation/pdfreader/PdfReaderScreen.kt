@@ -8,20 +8,25 @@ import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -34,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -46,14 +52,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.filimonov.mylibrary.core.domain.model.Book
-import com.filimonov.mylibrary.core.ui.LoadingIndicator
-import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
 import com.filimonov.mylibrary.core.domain.model.ReadingProgress
+import com.filimonov.mylibrary.core.ui.LoadingIndicator
+import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
+import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
+import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchScreen
 import dev.nucleusframework.pdfium.PdfPage
 import dev.nucleusframework.pdfium.PdfReaderState
@@ -63,18 +73,20 @@ import io.github.vinceglb.filekit.readBytes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import mylibrary.feature.reader.generated.resources.Res
+import mylibrary.feature.reader.generated.resources.back_to_library
+import mylibrary.feature.reader.generated.resources.page_info
 import mylibrary.feature.reader.generated.resources.search
 import mylibrary.feature.reader.generated.resources.settings
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PdfReaderScreen(
     modifier: Modifier = Modifier,
     bookId: Long,
     bookTitle: String,
+    onBack: () -> Unit,
     viewModel: PdfReaderViewModel = koinViewModel(
         parameters = {
             parametersOf(
@@ -88,113 +100,92 @@ fun PdfReaderScreen(
     when (val currentState = state.value) {
         PdfReaderUiState.Loading -> LoadingIndicator()
         is PdfReaderUiState.Success -> {
-            var showSearch by remember { mutableStateOf(false) }
-            var showSettings by remember { mutableStateOf(false) }
+            var showSearch by rememberSaveable { mutableStateOf(false) }
+            var showSettings by rememberSaveable { mutableStateOf(false) }
 
-            Scaffold(
-                modifier = modifier.fillMaxSize(),
-                containerColor = Color.White,
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = bookTitle,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 2,
-                                textAlign = TextAlign.Center
-                            )
-                        },
-                        actions = {
-                            IconButton(onClick = {
-                                showSearch = true
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = stringResource(Res.string.search),
-                                )
-                            }
-                            IconButton(onClick = {
-                                showSettings = true
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = stringResource(Res.string.settings),
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-                    )
-                }
-            ) { innerPadding ->
-                PdfViewer(
-                    modifier = Modifier.fillMaxSize()
-                        .padding(innerPadding),
-                    book = currentState.book,
-                    readingMode = currentState.settings.readingMode,
-                    restoredProgress = currentState.restoredProgress,
-                    pageCount = currentState.pageCount,
-                    pendingSearchPage = currentState.pendingSearchPage,
-                    selectedSearchHit = currentState.selectedSearchHit,
-                    onPdfOpened = { reader, pageCount ->
-                        viewModel.processCommand(PdfReaderCommand.PdfOpened(reader, pageCount))
-                    },
-                    onSearchNavigationHandled = {
-                        viewModel.processCommand(PdfReaderCommand.OnNavigationHandled)
-                    },
-                    onPageChanged = { page ->
-                        viewModel.processCommand(
-                            PdfReaderCommand.SaveProgress(
-                                ReadingProgress(
-                                    bookId,
-                                    page,
-                                    0
-                                )
-                            )
+            Box(modifier = modifier.fillMaxSize()) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                    topBar = {
+                        PdfReaderTopAppBar(
+                            bookTitle = bookTitle,
+                            onSearchClick = { showSearch = true },
+                            onSettingsClick = { showSettings = true },
+                            onBack = onBack
                         )
                     }
-                )
-                if (showSearch) {
-                    Dialog(onDismissRequest = {
-                        showSearch = false
-                        viewModel.processCommand(PdfReaderCommand.ClearSearch)
-                    }) {
-                        Surface {
-                            SearchScreen(
-                                query = currentState.searchQuery,
-                                results = currentState.searchResults,
-                                isSearching = currentState.isSearching,
-                                totalPages = currentState.pageCount,
-                                onQueryChange = {
-                                    viewModel.processCommand(PdfReaderCommand.InputSearchQuery(it))
-                                },
-                                onResultClick = {
-                                    viewModel.processCommand(PdfReaderCommand.SelectSearchResult(it))
-                                    showSearch = false
-                                },
-                                onJumpToPage = {
-                                    viewModel.processCommand(PdfReaderCommand.JumpToPage(it))
-                                    showSearch = false
-                                }
+                ) { innerPadding ->
+                    PdfViewer(
+                        modifier = Modifier.fillMaxSize()
+                            .padding(innerPadding),
+                        book = currentState.book,
+                        readingMode = currentState.settings.readingMode,
+                        restoredProgress = currentState.restoredProgress,
+                        pageCount = currentState.pageCount,
+                        pendingSearchPage = currentState.pendingSearchPage,
+                        selectedSearchHit = currentState.selectedSearchHit,
+                        onPdfOpened = { reader, pageCount ->
+                            viewModel.processCommand(PdfReaderCommand.PdfOpened(reader, pageCount))
+                        },
+                        onSearchNavigationHandled = {
+                            viewModel.processCommand(PdfReaderCommand.OnNavigationHandled)
+                        },
+                        onPageChanged = { page ->
+                            viewModel.processCommand(
+                                PdfReaderCommand.SaveProgress(
+                                    ReadingProgress(
+                                        bookId,
+                                        page,
+                                        0
+                                    )
+                                )
                             )
                         }
-                    }
-                }
-                if (showSettings) {
-                    ModalBottomSheet(onDismissRequest = { showSettings = false }) {
-                        PdfReaderSettingsPanel(
-                            settings = currentState.settings,
-                            onSettingsChange = { settings ->
-                                viewModel.processCommand(PdfReaderCommand.UpdateReaderSettings(settings))
+                    )
+                    if (showSearch) {
+                        PdfSearchDialog(
+                            currentState = currentState,
+                            onQueryChange = { query ->
+                                viewModel.processCommand(PdfReaderCommand.InputSearchQuery(query))
+                            },
+                            onResultClick = { searchResult ->
+                                viewModel.processCommand(
+                                    PdfReaderCommand.SelectSearchResult(
+                                        searchResult
+                                    )
+                                )
+                                showSearch = false
+                            },
+                            onJumpToPage = { page ->
+                                viewModel.processCommand(PdfReaderCommand.JumpToPage(page))
+                                showSearch = false
+                            },
+                            onDismissRequest = {
+                                showSearch = false
+                                viewModel.processCommand(PdfReaderCommand.ClearSearch)
                             }
                         )
                     }
+                    if (showSettings) {
+                        PdfSettingsBottomSheet(
+                            settings = currentState.settings,
+                            brightness = currentState.previewBrightness,
+                            onSettingsChange = { settings ->
+                                viewModel.processCommand(PdfReaderCommand.UpdateReaderSettings(settings))
+                            },
+                            onBrightnessChange = { newBrightness ->
+                                viewModel.processCommand(PdfReaderCommand.ChangeBrightness(newBrightness))
+                            },
+                            onDismissRequest = { showSettings = false }
+                        )
+                    }
                 }
-                if (currentState.settings.brightness < 1f) {
+                if (currentState.previewBrightness < 1f) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 1f - currentState.settings.brightness))
+                            .background(Color.Black.copy(alpha = 1f - currentState.previewBrightness))
                     )
                 }
             }
@@ -227,9 +218,7 @@ private fun PdfViewer(
         onPdfOpened(reader, reader.pageCount)
     }
     LaunchedEffect(pagerState) {
-        snapshotFlow {
-            pagerState.currentPage
-        }
+        snapshotFlow { pagerState.currentPage }
             .distinctUntilChanged()
             .collect { page ->
                 onPageChanged(page)
@@ -253,10 +242,22 @@ private fun PdfViewer(
             readingMode = readingMode,
             selectedSearchHit = selectedSearchHit
         )
-        Text(
-            text = "${pagerState.currentPage + 1} / ${reader.pageCount}",
-            textAlign = TextAlign.Center
-        )
+        Surface(
+            modifier = Modifier.padding(vertical = 8.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            Text(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                text = stringResource(
+                    Res.string.page_info,
+                    if (reader.pageCount > 0) (pagerState.currentPage + 1).toString() else "…",
+                    if (reader.pageCount > 0) reader.pageCount.toString() else "…"
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
@@ -365,6 +366,118 @@ private fun ZoomablePdfPage(
                     )
                 }
         }
+    }
+}
+
+@Composable
+private fun PdfReaderTopAppBar(
+    modifier: Modifier = Modifier,
+    bookTitle: String,
+    onSearchClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onBack: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(Res.string.back_to_library)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = bookTitle,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+            },
+            actions = {
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = stringResource(Res.string.search),
+                    )
+                }
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(Res.string.settings),
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                titleContentColor = MaterialTheme.colorScheme.onSurface
+            )
+        )
+    }
+}
+
+@Composable
+private fun PdfSearchDialog(
+    modifier: Modifier = Modifier,
+    currentState: PdfReaderUiState.Success,
+    onQueryChange: (String) -> Unit,
+    onResultClick: (SearchResult) -> Unit,
+    onJumpToPage: (Int) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            modifier = modifier,
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp
+        ) {
+            SearchScreen(
+                onDismiss = onDismissRequest,
+                query = currentState.searchQuery,
+                results = currentState.searchResults,
+                isSearching = currentState.isSearching,
+                totalPages = currentState.pageCount,
+                onQueryChange = onQueryChange,
+                onResultClick = onResultClick,
+                onJumpToPage = onJumpToPage
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PdfSettingsBottomSheet(
+    modifier: Modifier = Modifier,
+    settings: ReaderSettings,
+    brightness: Float,
+    onSettingsChange: (ReaderSettings) -> Unit,
+    onBrightnessChange: (Float) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    ModalBottomSheet(
+        modifier = modifier,
+        onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        PdfReaderSettingsPanel(
+            settings = settings,
+            onSettingsChange = onSettingsChange,
+            brightness = brightness,
+            onBrightnessChange = onBrightnessChange
+        )
     }
 }
 

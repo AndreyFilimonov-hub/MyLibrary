@@ -1,10 +1,10 @@
 package com.filimonov.mylibrary.feature.reader.presentation.pdfreader
 
+import androidx.compose.ui.geometry.Rect
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.compose.ui.geometry.Rect
-import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.core.domain.model.ReadingProgress
+import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetBookUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReaderSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.domain.usecase.GetReadingProgressUseCase
@@ -13,12 +13,16 @@ import com.filimonov.mylibrary.feature.reader.domain.usecase.SaveSettingsUseCase
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import dev.nucleusframework.pdfium.PdfReaderState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -43,19 +47,11 @@ class PdfReaderViewModel(
     private val searchMutex = Mutex()
     private val pageTextCache = mutableMapOf<Int, PdfPageTextContent>()
 
+    private val brightnessState = MutableStateFlow<Float?>(null)
+
     init {
-        viewModelScope.launch {
-            val bookDeferred = async { getBookUseCase(bookId) }
-            val settingsDeferred = async { getReaderSettingsUseCase().first() }
-            val readingProgressDeferred = async { getReadingProgressUseCase(bookId) }
-            _state.update {
-                PdfReaderUiState.Success(
-                    book = bookDeferred.await(),
-                    settings = settingsDeferred.await(),
-                    restoredProgress = readingProgressDeferred.await()
-                )
-            }
-        }
+        loadPdf()
+        observeBrightnessChanges()
     }
 
     fun processCommand(command: PdfReaderCommand) {
@@ -74,12 +70,44 @@ class PdfReaderViewModel(
 
             PdfReaderCommand.ClearSearch -> clearSearch()
             PdfReaderCommand.OnNavigationHandled -> onNavigationHandled()
+            is PdfReaderCommand.ChangeBrightness -> changeBrightness(command.brightness)
         }
     }
 
-    private fun reduce(reducer: (PdfReaderUiState.Success) -> PdfReaderUiState.Success) {
-        _state.update { current ->
-            (current as? PdfReaderUiState.Success)?.let(reducer) ?: current
+    private fun loadPdf() {
+        viewModelScope.launch {
+            val bookDeferred = async { getBookUseCase(bookId) }
+            val settingsDeferred = async { getReaderSettingsUseCase().first() }
+            val readingProgressDeferred = async { getReadingProgressUseCase(bookId) }
+
+            val book = bookDeferred.await()
+            val settings = settingsDeferred.await()
+            val restoredProgress = readingProgressDeferred.await()
+
+            _state.update {
+                PdfReaderUiState.Success(
+                    book = book,
+                    settings = settings,
+                    restoredProgress = restoredProgress,
+                    previewBrightness = settings.brightness
+                )
+            }
+        }
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun observeBrightnessChanges() {
+        viewModelScope.launch {
+            brightnessState
+                .filterNotNull()
+                .debounce(400)
+                .collectLatest { newBrightness ->
+                    val current =
+                        (_state.value as? PdfReaderUiState.Success)?.settings ?: return@collectLatest
+                    val newSettings =
+                        current.copy(brightness = newBrightness)
+                    updateSettings(newSettings)
+                }
         }
     }
 
@@ -180,6 +208,14 @@ class PdfReaderViewModel(
         }
     }
 
+    private fun changeBrightness(value: Float) {
+        reduce { currentState ->
+            currentState.copy(previewBrightness = value)
+        }
+
+        brightnessState.value = value
+    }
+
     private fun saveProgress(progress: ReadingProgress) {
         viewModelScope.launch {
             saveProgressUseCase(progress)
@@ -203,51 +239,56 @@ class PdfReaderViewModel(
         val results = mutableListOf<SearchResult>()
         val hits = mutableMapOf<String, PdfSearchHit>()
         for (page in 0 until reader.pageCount) {
-                coroutineContext.ensureActive()
+            coroutineContext.ensureActive()
 
-                val pageContent = pageTextCache[page] ?: run {
-                    extractPageText(reader, page)
-                        .also { pageTextCache[page] = it }
-                }
+            val pageContent = pageTextCache[page] ?: run {
+                extractPageText(reader, page)
+                    .also { pageTextCache[page] = it }
+            }
 
-                val resultsBeforePage = results.size
-                pageContent.runs.forEachIndexed { runIndex, run ->
-                    var from = 0
-                    while (true) {
-                        val matchIndex = run.text.indexOf(query, from, ignoreCase = true)
-                        if (matchIndex == -1) break
+            val resultsBeforePage = results.size
+            pageContent.runs.forEachIndexed { runIndex, run ->
+                var from = 0
+                while (true) {
+                    val matchIndex = run.text.indexOf(query, from, ignoreCase = true)
+                    if (matchIndex == -1) break
 
-                        val pageMatchIndex = run.startOffset + matchIndex
-                        val snippetStart = (pageMatchIndex - SNIPPET_CONTEXT_LENGTH)
-                            .coerceIn(0, pageContent.text.length)
-                        val snippetEnd = (pageMatchIndex + query.length + SNIPPET_CONTEXT_LENGTH)
-                            .coerceIn(snippetStart, pageContent.text.length)
-                        val resultId = "$page:$runIndex:$matchIndex"
+                    val pageMatchIndex = run.startOffset + matchIndex
+                    val snippetStart = (pageMatchIndex - SNIPPET_CONTEXT_LENGTH)
+                        .coerceIn(0, pageContent.text.length)
+                    val snippetEnd = (pageMatchIndex + query.length + SNIPPET_CONTEXT_LENGTH)
+                        .coerceIn(snippetStart, pageContent.text.length)
+                    val resultId = "$page:$runIndex:$matchIndex"
 
-                        results.add(
-                            SearchResult(
-                                id = resultId,
-                                globalPageIndex = page,
-                                snippet = "...${pageContent.text.substring(snippetStart, snippetEnd)}...",
-                                matchStart = null,
-                                matchEnd = null
-                            )
+                    results.add(
+                        SearchResult(
+                            id = resultId,
+                            globalPageIndex = page,
+                            snippet = "...${
+                                pageContent.text.substring(
+                                    snippetStart,
+                                    snippetEnd
+                                )
+                            }...",
+                            matchStart = null,
+                            matchEnd = null
                         )
-                        hits[resultId] = PdfSearchHit(
-                            resultId = resultId,
-                            pageIndex = page,
-                            rectInPoints = run.rectInPoints,
-                            pageWidthInPoints = pageContent.widthInPoints,
-                            pageHeightInPoints = pageContent.heightInPoints
-                        )
+                    )
+                    hits[resultId] = PdfSearchHit(
+                        resultId = resultId,
+                        pageIndex = page,
+                        rectInPoints = run.rectInPoints,
+                        pageWidthInPoints = pageContent.widthInPoints,
+                        pageHeightInPoints = pageContent.heightInPoints
+                    )
 
-                        from = matchIndex + query.length
-                    }
+                    from = matchIndex + query.length
                 }
+            }
 
-                if (results.size != resultsBeforePage) {
-                    onPartialResults(PdfSearchData(results.toList(), hits.toMap()))
-                }
+            if (results.size != resultsBeforePage) {
+                onPartialResults(PdfSearchData(results.toList(), hits.toMap()))
+            }
         }
         PdfSearchData(results, hits)
     }
@@ -284,6 +325,12 @@ class PdfReaderViewModel(
         )
     }
 
+    private fun reduce(reducer: (PdfReaderUiState.Success) -> PdfReaderUiState.Success) {
+        _state.update { current ->
+            (current as? PdfReaderUiState.Success)?.let(reducer) ?: current
+        }
+    }
+
     override fun onCleared() {
         searchJob?.cancel()
         searchJob = null
@@ -308,6 +355,7 @@ private data class PdfPageTextContent(
     val widthInPoints: Float,
     val heightInPoints: Float
 ) {
+
     companion object {
         val EMPTY = PdfPageTextContent("", emptyList(), 0f, 0f)
     }

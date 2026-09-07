@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
@@ -23,12 +25,14 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -47,6 +51,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,25 +71,29 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.filimonov.mylibrary.core.domain.model.ReadingProgress
 import com.filimonov.mylibrary.core.ui.LoadingIndicator
 import com.filimonov.mylibrary.core.ui.theme.AppDimension
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
-import com.filimonov.mylibrary.core.domain.model.ReadingProgress
+import com.filimonov.mylibrary.feature.reader.presentation.reader.mapper.colors
 import com.filimonov.mylibrary.feature.reader.presentation.search.NavigationTarget
+import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchScreen
 import com.filimonov.mylibrary.feature.reader.presentation.settings.ReaderSettingsPanel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import mylibrary.feature.reader.generated.resources.Res
+import mylibrary.feature.reader.generated.resources.back_to_library
 import mylibrary.feature.reader.generated.resources.close_reader
 import mylibrary.feature.reader.generated.resources.ok
 import mylibrary.feature.reader.generated.resources.page_info
@@ -99,7 +108,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     modifier: Modifier = Modifier,
@@ -120,61 +128,41 @@ fun ReaderScreen(
         }
 
         is ReaderUiState.Success -> {
-            var showSearch by remember { mutableStateOf(false) }
-            var showSettings by remember { mutableStateOf(false) }
+            var showSearch by rememberSaveable { mutableStateOf(false) }
+            var showSettings by rememberSaveable { mutableStateOf(false) }
 
             val snackbarHostState = remember { SnackbarHostState() }
             val scope = rememberCoroutineScope()
 
+            val readerColors = currentState.settings.theme.colors()
+
             Box(modifier = modifier.fillMaxSize()) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    containerColor = currentState.settings.theme.background,
+                    containerColor = readerColors.background,
                     topBar = {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    text = bookTitle,
-                                    color = currentState.settings.theme.text,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 2,
-                                    textAlign = TextAlign.Center
-                                )
-                            },
-                            actions = {
-                                val waitForBookLoading =
-                                    stringResource(Res.string.wait_for_book_loading)
-                                val ok = stringResource(Res.string.ok)
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        if (currentState.isSearchAvailable) {
-                                            showSearch = true
-                                        } else {
-                                            snackbarHostState.showSnackbar(
-                                                waitForBookLoading,
-                                                ok
-                                            )
-                                        }
+                        val waitForBookLoading =
+                            stringResource(Res.string.wait_for_book_loading)
+                        val ok = stringResource(Res.string.ok)
+                        ReaderTopAppBar(
+                            readerColors = readerColors,
+                            bookTitle = bookTitle,
+                            onSearchClick = {
+                                scope.launch {
+                                    if (currentState.isSearchAvailable) {
+                                        showSearch = true
+                                    } else {
+                                        snackbarHostState.showSnackbar(
+                                            waitForBookLoading,
+                                            ok
+                                        )
                                     }
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = stringResource(Res.string.search),
-                                        tint = currentState.settings.theme.text
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    showSettings = true
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Settings,
-                                        contentDescription = stringResource(Res.string.settings),
-                                        tint = currentState.settings.theme.text
-                                    )
                                 }
                             },
-                            colors = TopAppBarDefaults.topAppBarColors(containerColor = currentState.settings.theme.background)
+                            onSettingsClick = {
+                                showSettings = true
+                            },
+                            onBack = onBack
                         )
                     },
                     snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -200,68 +188,65 @@ fun ReaderScreen(
                     )
 
                     if (showSearch) {
-                        Dialog(onDismissRequest = {
-                            showSearch = false
-                            viewModel.processCommand(ReaderCommand.ClearSearchQuery)
-                        }) {
-                            Surface(
-                                modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                            ) {
-                                SearchScreen(
-                                    query = currentState.searchQuery,
-                                    results = currentState.searchResults,
-                                    isSearching = currentState.isSearching,
-                                    totalPages = currentState.totalPages,
-                                    onQueryChange = { query ->
-                                        viewModel.processCommand(ReaderCommand.InputQuery(query))
-                                    },
-                                    onResultClick = { searchResult ->
-                                        viewModel.processCommand(
-                                            ReaderCommand.SelectSearchResult(
-                                                searchResult
-                                            )
-                                        )
-                                        showSearch = false
-                                    },
-                                    onJumpToPage = { page ->
-                                        viewModel.processCommand(
-                                            ReaderCommand.JumpToPageNumber(
-                                                page,
-                                                null
-                                            )
-                                        )
-                                        showSearch = false
-                                    }
+                        SearchDialog(
+                            currentState = currentState,
+                            onQueryChange = { query ->
+                                viewModel.processCommand(ReaderCommand.InputQuery(query))
+                            },
+                            onResultClick = { searchResult ->
+                                viewModel.processCommand(
+                                    ReaderCommand.SelectSearchResult(
+                                        searchResult
+                                    )
                                 )
+                                showSearch = false
+                            },
+                            onJumpToPage = { page ->
+                                viewModel.processCommand(
+                                    ReaderCommand.JumpToPageNumber(
+                                        page,
+                                        null
+                                    )
+                                )
+                                showSearch = false
+                            },
+                            onDismissRequest = {
+                                showSearch = false
+                                viewModel.processCommand(ReaderCommand.ClearSearchQuery)
                             }
-                        }
+                        )
                     }
 
                     if (showSettings) {
-                        ModalBottomSheet(onDismissRequest = { showSettings = false }) {
-                            ReaderSettingsPanel(
-                                settings = currentState.settings,
-                                fontSize = currentState.previewFontSize ?: currentState.settings.fontSize,
-                                onSettingsChange = { settings ->
-                                    viewModel.processCommand(
-                                        ReaderCommand.UpdateReaderSettings(
-                                            settings
-                                        )
+                        SettingsBottomSheet(
+                            currentState = currentState,
+                            onSettingsChange = { settings ->
+                                viewModel.processCommand(
+                                    ReaderCommand.UpdateReaderSettings(
+                                        settings
                                     )
-                                },
-                                onChangeFontSize = { newSize ->
-                                    viewModel.processCommand(ReaderCommand.ChangeFontSize(newSize))
-                                }
-                            )
-                        }
+                                )
+                            },
+                            onChangeFontSize = { newSize ->
+                                viewModel.processCommand(ReaderCommand.ChangeFontSize(newSize))
+                            },
+                            onBrightnessChange = { newBrightness ->
+                                viewModel.processCommand(
+                                    ReaderCommand.ChangeBrightness(
+                                        newBrightness
+                                    )
+                                )
+                            },
+                            onDismissRequest = { showSettings = false }
+                        )
                     }
                 }
 
-                if (currentState.settings.brightness < 1f) {
+                if (currentState.previewBrightness < 1f) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 1f - currentState.settings.brightness))
+                            .background(Color.Black.copy(alpha = 1f - currentState.previewBrightness))
                     )
                 }
             }
@@ -414,11 +399,14 @@ fun BookScreen(
             )
 
             val totalPages = paginator.totalPages()
-            pageInfo = stringResource(
+            val newPageInfo = stringResource(
                 Res.string.page_info,
                 globalPageIndex?.plus(1)?.toString() ?: "...",
                 totalPages?.toString() ?: "..."
             )
+            LaunchedEffect(newPageInfo) {
+                pageInfo = newPageInfo
+            }
 
             val selectedImage = paginator.selectedImage
             if (selectedImage != null) {
@@ -429,11 +417,23 @@ fun BookScreen(
             }
         }
 
-        Text(
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(AppDimension.sm),
-            text = pageInfo,
-            color = settings.theme.text
-        )
+        Surface(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(vertical = AppDimension.sm),
+            shape = RoundedCornerShape(20.dp),
+            color = settings.theme.colors().text.copy(alpha = 0.08f)
+        ) {
+            Text(
+                modifier = Modifier.padding(
+                    horizontal = AppDimension.md,
+                    vertical = AppDimension.xs
+                ),
+                text = pageInfo,
+                color = settings.theme.colors().text,
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
     }
 }
 
@@ -561,7 +561,7 @@ private fun ChapterPageContent(
             ),
             inlineContent = inlineContent,
             style = style,
-            color = theme.text
+            color = theme.colors().text
         )
     }
 }
@@ -585,6 +585,125 @@ private fun buildHighlightAnnotatedText(
             ),
             start = matchStart,
             end = matchEnd
+        )
+    }
+}
+
+@Composable
+private fun ReaderTopAppBar(
+    modifier: Modifier = Modifier,
+    readerColors: ReaderColors,
+    bookTitle: String,
+    onSearchClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onBack: () -> Unit
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = AppDimension.md, vertical = AppDimension.xs),
+        shape = RoundedCornerShape(22.dp),
+        color = readerColors.text.copy(alpha = 0.08f)
+    ) {
+        TopAppBar(
+            windowInsets = WindowInsets(0, 0, 0, 0),
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(Res.string.back_to_library),
+                        tint = readerColors.text
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = bookTitle,
+                    color = readerColors.text,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center
+                )
+            },
+            actions = {
+                IconButton(onClick = onSearchClick) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = stringResource(Res.string.search),
+                        tint = readerColors.text
+                    )
+                }
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = stringResource(Res.string.settings),
+                        tint = readerColors.text
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                titleContentColor = readerColors.text,
+                actionIconContentColor = readerColors.text
+            )
+        )
+    }
+}
+
+@Composable
+private fun SearchDialog(
+    modifier: Modifier = Modifier,
+    currentState: ReaderUiState.Success,
+    onQueryChange: (String) -> Unit,
+    onResultClick: (SearchResult) -> Unit,
+    onJumpToPage: (Int) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            modifier = modifier.clip(RoundedCornerShape(28.dp)),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp
+        ) {
+            SearchScreen(
+                onDismiss = onDismissRequest,
+                query = currentState.searchQuery,
+                results = currentState.searchResults,
+                isSearching = currentState.isSearching,
+                totalPages = currentState.totalPages,
+                onQueryChange = onQueryChange,
+                onResultClick = onResultClick,
+                onJumpToPage = onJumpToPage
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsBottomSheet(
+    modifier: Modifier = Modifier,
+    currentState: ReaderUiState.Success,
+    onSettingsChange: (ReaderSettings) -> Unit,
+    onChangeFontSize: (Int) -> Unit,
+    onBrightnessChange: (Float) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    ModalBottomSheet(
+        modifier = modifier,
+        onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        ReaderSettingsPanel(
+            settings = currentState.settings,
+            fontSize = currentState.previewFontSize,
+            brightness = currentState.previewBrightness,
+            onSettingsChange = onSettingsChange,
+            onFontSizeChange = onChangeFontSize,
+            onBrightnessChange = onBrightnessChange
         )
     }
 }
