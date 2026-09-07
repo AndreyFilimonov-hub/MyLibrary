@@ -7,7 +7,19 @@
 
     <!-- Library -->
 
-    <string name="library_title">My Library</string>
+    <string name="library_title">Моя библиотека</string>
+    <string name="library_subtitle">Хорошая книга всегда рядом</string>
+    <string name="library_collection">ВАША КОЛЛЕКЦИЯ</string>
+    <string name="library_book_count">Книг на полке: %1$d</string>
+    <string name="add_book">Добавить книгу</string>
+    <string name="importing_book">Добавляем книгу…</string>
+    <string name="empty_library_hint">Откройте файл с устройства, чтобы начать читать</string>
+    <string name="empty_favorite_hint">Нажмите на сердечко рядом с книгой, и она появится здесь</string>
+    <string name="empty_read_hint">Отмечайте завершённые книги значком прочтения</string>
+    <string name="add_to_favorites">Добавить в любимые</string>
+    <string name="remove_from_favorites">Убрать из любимых</string>
+    <string name="mark_read">Отметить прочитанной</string>
+    <string name="mark_unread">Отметить непрочитанной</string>
 
     <string name="book_already_added">Книга уже добавлена</string>
     <string name="invalid_epub_exception">Ошибка чтения, попробуйте другой файл</string>
