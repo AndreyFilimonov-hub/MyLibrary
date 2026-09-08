@@ -1,6 +1,8 @@
 package com.filimonov.mylibrary.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -24,7 +26,9 @@ fun AppNavHost() {
         composable<LibraryRoute> {
             LibraryScreen(
                 onBookClick = { bookId, bookTitle, bookFormat ->
-                    navController.navigate(ReaderRoute(bookId, bookTitle, bookFormat.name))
+                    navController.navigate(ReaderRoute(bookId, bookTitle, bookFormat.name)) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }
@@ -36,17 +40,23 @@ fun AppNavHost() {
                 BookFormat.FB2 -> ReaderScreen(
                     bookId = route.bookId,
                     bookTitle = route.bookTitle,
-                    onBack = {
-                        navController.popBackStack()
-                    }
+                    onBack = { navController.safePopBackStack() }
                 )
 
                 BookFormat.PDF -> PdfReaderScreen(
                     bookId = route.bookId,
                     bookTitle = route.bookTitle,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.safePopBackStack() }
                 )
             }
         }
+    }
+}
+
+private fun NavHostController.safePopBackStack() {
+    val isCurrentScreenActive = currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED
+
+    if (isCurrentScreenActive) {
+        popBackStack()
     }
 }
