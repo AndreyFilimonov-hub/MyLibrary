@@ -1,20 +1,10 @@
 package com.filimonov.mylibrary.feature.reader.presentation.reader
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.decodeToImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.ParagraphStyle
 import androidx.compose.ui.text.Placeholder
@@ -34,10 +24,13 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.filimonov.mylibrary.core.coroutine.PriorityTaskExecutor
 import com.filimonov.mylibrary.core.coroutine.TaskPriority
 import com.filimonov.mylibrary.feature.reader.domain.model.Chapter
+import com.filimonov.mylibrary.feature.reader.presentation.reader.model.ReaderElement
+import com.filimonov.mylibrary.feature.reader.presentation.reader.model.ReaderPage
 import com.filimonov.mylibrary.feature.reader.presentation.reader.utils.textMeasurementDispatcher
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import com.fleeksoft.ksoup.Ksoup
@@ -60,7 +53,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
-import kotlin.math.ceil
 
 class LazyBookPaginator(
     private val chapters: List<Chapter>,
@@ -72,6 +64,8 @@ class LazyBookPaginator(
 
     companion object {
         private val textMeasurementMutex = Mutex()
+        private const val IMAGE_ANNOTATION_TAG = "reader-image"
+        private val imageVerticalMargin = 8.dp
     }
 
     private val taskExecutor = PriorityTaskExecutor()
@@ -79,18 +73,16 @@ class LazyBookPaginator(
 
     private val progressMutex = Mutex()
 
-    private val _chapterPages = MutableStateFlow<Map<Int, List<AnnotatedString>>>(emptyMap())
+    private val _chapterPages = MutableStateFlow<Map<Int, List<ReaderPage>>>(emptyMap())
 
-    val chapterPages: StateFlow<Map<Int, List<AnnotatedString>>>
+    val chapterPages: StateFlow<Map<Int, List<ReaderPage>>>
         get() = _chapterPages.asStateFlow()
 
     private val _pageCounts = MutableStateFlow<Map<Int, Int>>(emptyMap())
     private val _errors = MutableStateFlow<Map<Int, PaginationError>>(emptyMap())
 
     val errors = _errors.asStateFlow()
-    private val inProgress = mutableMapOf<Int, CompletableDeferred<List<AnnotatedString>>>()
-
-    private val inlineContentMap = mutableMapOf<String, InlineTextContent>()
+    private val inProgress = mutableMapOf<Int, CompletableDeferred<List<ReaderPage>>>()
 
     val isFullyCounted = MutableStateFlow(false)
 
@@ -117,10 +109,6 @@ class LazyBookPaginator(
         ).forEach(::ensurePaginated)
     }
 
-    fun getInlineContent(): Map<String, InlineTextContent> {
-        return inlineContentMap.toMap()
-    }
-
     fun onImageClicked(bitmap: ImageBitmap) {
         selectedImage = bitmap
     }
@@ -139,7 +127,6 @@ class LazyBookPaginator(
         taskExecutor.cancel()
         _chapterPages.value = emptyMap()
         _pageCounts.value = emptyMap()
-        inlineContentMap.clear()
         selectedImage = null
     }
 
@@ -259,7 +246,7 @@ class LazyBookPaginator(
     private suspend fun ensurePaginatedAwait(
         chapterIndex: Int,
         priority: TaskPriority
-    ): List<AnnotatedString> {
+    ): List<ReaderPage> {
         require(chapterIndex in chapters.indices)
         _chapterPages.value[chapterIndex]?.let {
             return it
@@ -271,7 +258,7 @@ class LazyBookPaginator(
             inProgress[chapterIndex]?.let {
                 return@withLock it
             }
-            CompletableDeferred<List<AnnotatedString>>().also {
+            CompletableDeferred<List<ReaderPage>>().also {
                 inProgress[chapterIndex] = it
             }
         }
@@ -286,14 +273,14 @@ class LazyBookPaginator(
                     deferred.complete(pages)
                     return@execute
                 }
-                val (annotated, placeholders) = chapterToAnnotatedString(chapters[chapterIndex])
+                val layout = chapterToAnnotatedString(chapters[chapterIndex])
                 val pages = paginateChapterGreedy(
-                    text = annotated,
-                    placeholders = placeholders,
+                    text = layout.text,
+                    placeholders = layout.placeholders,
                     textMeasurer = textMeasurer,
                     style = style,
                     containerSize = containerSize
-                )
+                ).map { page -> layout.toReaderPage(page) }
 
                 _chapterPages.update {
                     it + (chapterIndex to pages)
@@ -352,10 +339,57 @@ class LazyBookPaginator(
             .forEach { index -> ensurePaginatedAwait(index, TaskPriority.HIGH) }
     }
 
-    private fun chapterToAnnotatedString(chapter: Chapter): Pair<AnnotatedString, List<AnnotatedString.Range<Placeholder>>> {
+    private data class ChapterLayout(
+        val text: AnnotatedString,
+        val placeholders: List<AnnotatedString.Range<Placeholder>>,
+        val images: Map<String, ReaderElement.Image>
+    ) {
+        fun toReaderPage(page: AnnotatedString): ReaderPage {
+            val imageRanges = page.getStringAnnotations(IMAGE_ANNOTATION_TAG, 0, page.length)
+            if (imageRanges.isEmpty()) {
+                return ReaderPage(
+                    elements = listOf(ReaderElement.Text(page, 0)),
+                    text = page.text
+                )
+            }
+
+            val elements = buildList {
+                var cursor = 0
+                var textOffset = 0
+                imageRanges.forEach { range ->
+                    var textEnd = range.start
+
+                    while (textEnd > cursor && page.text[textEnd - 1].isWhitespace()) {
+                        textEnd--
+                    }
+                    if (cursor < textEnd) {
+                        val part = page.subSequence(cursor, textEnd)
+                        add(ReaderElement.Text(part, textOffset))
+                        textOffset += part.length
+                    }
+                    images[range.item]?.let { image ->
+                        add(image.copy(sourceOffset = textOffset))
+                    }
+                    cursor = range.end
+                    while (cursor < page.length && page.text[cursor].isWhitespace()) {
+                        cursor++
+                    }
+                }
+                if (cursor < page.length) {
+                    add(ReaderElement.Text(page.subSequence(cursor, page.length), textOffset))
+                }
+            }
+            return ReaderPage(elements = elements, text = elements
+                .filterIsInstance<ReaderElement.Text>()
+                .joinToString(separator = "") { it.value.text })
+        }
+    }
+
+    private fun chapterToAnnotatedString(chapter: Chapter): ChapterLayout {
         val document = Ksoup.parse(chapter.content, Parser.xmlParser())
         var imageCounter = 0
         val placeholders = mutableListOf<AnnotatedString.Range<Placeholder>>()
+        val images = mutableMapOf<String, ReaderElement.Image>()
 
         val blockTags = setOf("section", "blockquote", "li")
         val headerTags = setOf("h1", "h2", "h3", "h4", "h5", "h6")
@@ -395,64 +429,45 @@ class LazyBookPaginator(
                                 .ifBlank { node.attr("xlink:href") }
                                 .ifBlank { node.attr("l:href") }
                                 .removePrefix("#")
-                            val bytes = if (src.isNotBlank()) chapter.images?.get(src) else null
 
-                            val bitmap = bytes?.decodeToImageBitmap()
+                            val bytes = (if (src.isNotBlank()) chapter.images?.get(src) else null)
+                                ?: return
 
-                            if (bitmap != null) {
-                                val id = "chapter_${chapter.id}_img_${imageCounter++}"
-                                val (_, heightSp) = calculatePlaceholderSize(bitmap)
+                            val bitmap = bytes.decodeToImageBitmap()
 
-                                val placeholder = Placeholder(
-                                    width = with(density) { containerSize.width.toSp() },
-                                    height = heightSp,
-                                    placeholderVerticalAlign = PlaceholderVerticalAlign.Top
-                                )
-
-                                val start = length
-                                appendInlineContent(id, "[image]")
-                                val end = length
-
-                                val imageHeightPx = with(density) {
-                                    heightSp.toPx()
-                                }
-
-                                val lineHeightPx = with(density) {
-                                    style.lineHeight.toPx()
-                                }
-
-                                val lineCount = ceil(
-                                    imageHeightPx / lineHeightPx
-                                ).toInt()
-
-                                repeat((lineCount - 1).coerceAtLeast(0)) {
-                                    append("\n")
-                                }
-
-                                placeholders.add(AnnotatedString.Range(placeholder, start, end))
-
-                                inlineContentMap[id] =
-                                    InlineTextContent(placeholder = placeholder) {
-                                        inlineContentMap[id] =
-                                            InlineTextContent(placeholder = placeholder) {
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Image(
-                                                        modifier = Modifier
-                                                            .wrapContentSize()
-                                                            .clickable {
-                                                                onImageClicked(bitmap)
-                                                            },
-                                                        bitmap = bitmap,
-                                                        contentDescription = node.attr("alt"),
-                                                        contentScale = ContentScale.Fit
-                                                    )
-                                                }
-                                            }
-                                    }
+                            val id = "chapter_${chapter.id}_img_${imageCounter++}"
+                            val (_, heightSp) = calculatePlaceholderSize(bitmap)
+                            val verticalMarginsSp = with(density) {
+                                (imageVerticalMargin * 2).toSp()
                             }
+                            val imageBlockHeight =
+                                (heightSp.value + verticalMarginsSp.value).sp
+
+                            val placeholder = Placeholder(
+                                width = with(density) { containerSize.width.toSp() },
+                                height = imageBlockHeight,
+                                placeholderVerticalAlign = PlaceholderVerticalAlign.Top
+                            )
+
+                            val start = length
+                            append('\uFFFC')
+                            val end = length
+                            addStringAnnotation(
+                                tag = IMAGE_ANNOTATION_TAG,
+                                annotation = id,
+                                start = start,
+                                end = end
+                            )
+
+                            placeholders.add(AnnotatedString.Range(placeholder, start, end))
+                            images[id] = ReaderElement.Image(
+                                source = src,
+                                bytes = bytes,
+                                description = node.attr("alt").ifBlank { null },
+                                widthPx = bitmap.width,
+                                heightPx = bitmap.height,
+                                sourceOffset = 0
+                            )
                             return
                         }
 
@@ -666,7 +681,7 @@ class LazyBookPaginator(
                 }
             }
 
-        return trimmed to adjustedPlaceholders
+        return ChapterLayout(trimmed, adjustedPlaceholders, images)
     }
 
     private suspend fun paginateChapterGreedy(

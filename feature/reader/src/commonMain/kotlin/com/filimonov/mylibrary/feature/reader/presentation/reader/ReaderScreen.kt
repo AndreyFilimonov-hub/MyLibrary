@@ -16,14 +16,15 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -59,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -86,6 +88,8 @@ import com.filimonov.mylibrary.feature.reader.domain.model.ReaderSettings
 import com.filimonov.mylibrary.feature.reader.domain.model.ReaderTheme
 import com.filimonov.mylibrary.feature.reader.domain.model.ReadingMode
 import com.filimonov.mylibrary.feature.reader.presentation.reader.mapper.colors
+import com.filimonov.mylibrary.feature.reader.presentation.reader.model.ReaderElement
+import com.filimonov.mylibrary.feature.reader.presentation.reader.model.ReaderPage
 import com.filimonov.mylibrary.feature.reader.presentation.search.NavigationTarget
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchResult
 import com.filimonov.mylibrary.feature.reader.presentation.search.SearchScreen
@@ -315,8 +319,6 @@ fun BookScreen(
 
             val errors by paginator.errors.collectAsStateWithLifecycle()
 
-            val inlineContent = paginator.getInlineContent()
-
             val outerPagerState = rememberPagerState(
                 initialPage = restoredProgress?.chapterId ?: 0,
                 pageCount = { chapters.size })
@@ -355,7 +357,6 @@ fun BookScreen(
             ) { chapterIndex ->
                 ChapterPageContent(
                     pages = chapterPages[chapterIndex],
-                    inlineContent = inlineContent,
                     isActiveChapter = chapterIndex == outerPagerState.settledPage,
                     style = style,
                     theme = settings.theme,
@@ -377,6 +378,7 @@ fun BookScreen(
                     onCurrentPageInChapterChanged = { pageIndex ->
                         displayedPosition = CurrentPosition(chapterIndex, pageIndex)
                     },
+                    onImageClicked = paginator::onImageClicked,
                     contentPadding = PaddingValues(
                         horizontal = AppDimension.xxl,
                         vertical = AppDimension.sm
@@ -467,8 +469,7 @@ fun BookPager(
 @Composable
 private fun ChapterPageContent(
     modifier: Modifier = Modifier,
-    pages: List<AnnotatedString>?,
-    inlineContent: Map<String, InlineTextContent>,
+    pages: List<ReaderPage>?,
     isActiveChapter: Boolean,
     style: TextStyle,
     theme: ReaderTheme,
@@ -480,6 +481,7 @@ private fun ChapterPageContent(
     matchEnd: Int?,
     onCharIndexChanged: (Int) -> Unit,
     onCurrentPageInChapterChanged: (pageIndex: Int) -> Unit,
+    onImageClicked: (ImageBitmap) -> Unit,
     contentPadding: PaddingValues
 ) {
     var highlightVisible by remember(matchStart, matchEnd) {
@@ -548,18 +550,73 @@ private fun ChapterPageContent(
         state = innerPagerState,
         readingMode = readingMode
     ) { pageIndex ->
-        Text(
+        ReaderPageContent(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
-            text = buildHighlightAnnotatedText(
-                text = pages[pageIndex],
-                matchStart = matchStart,
-                matchEnd = matchEnd,
-                highlightColor = highlightColor
-            ),
-            inlineContent = inlineContent,
+            page = pages[pageIndex],
             style = style,
-            color = theme.colors().text
+            color = theme.colors().text,
+            matchStart = matchStart,
+            matchEnd = matchEnd,
+            highlightColor = highlightColor,
+            onImageClick = onImageClicked
         )
+    }
+}
+
+@Composable
+private fun ReaderPageContent(
+    modifier: Modifier,
+    page: ReaderPage,
+    style: TextStyle,
+    color: Color,
+    matchStart: Int?,
+    matchEnd: Int?,
+    highlightColor: Color,
+    onImageClick: (ImageBitmap) -> Unit
+) {
+    Column(modifier = modifier) {
+        page.elements.forEach { element ->
+            when (element) {
+                is ReaderElement.Text -> {
+                    val localStart = matchStart?.minus(element.sourceOffset)
+                    val localEnd = matchEnd?.minus(element.sourceOffset)
+                    Text(
+                        text = buildHighlightAnnotatedText(
+                            text = element.value,
+                            matchStart = localStart?.coerceIn(0, element.value.length),
+                            matchEnd = localEnd?.coerceIn(0, element.value.length),
+                            highlightColor = highlightColor
+                        ),
+                        style = style,
+                        color = color
+                    )
+                }
+
+                is ReaderElement.Image -> {
+                    val bitmap = remember(element.bytes) { element.bytes.decodeToImageBitmap() }
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val intrinsicWidth = with(LocalDensity.current) { element.widthPx.toDp() }
+                        val imageWidth = minOf(intrinsicWidth, maxWidth)
+                        val imageHeight = imageWidth *
+                            element.heightPx.toFloat() / element.widthPx.coerceAtLeast(1)
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = element.description,
+                            modifier = Modifier
+                                .width(imageWidth)
+                                .height(imageHeight)
+                                .clickable { onImageClick(bitmap) },
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
